@@ -14,5 +14,4 @@ src/dist/
 # Python cache
 src/game/__pycache__/
 
-src\game\assets
-src\ursina_assets
+src\wheels
