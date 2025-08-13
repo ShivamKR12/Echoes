@@ -233,4 +233,4 @@ Special thanks to the Ursina and Panda3D communities for their support and inspi
 
 ---
 
-Thank you for checking out Echoes and
+Thank you for checking out Echoes and exploring Ursina on Android!
