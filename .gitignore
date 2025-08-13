@@ -14,4 +14,4 @@ src/dist/
 # Python cache
 src/game/__pycache__/
 
-src\wheels
+src\wheels\wheelpatcher.py
