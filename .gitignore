@@ -1,0 +1,15 @@
+# Virtual environment
+venv/
+
+# Keystore file
+src/ursina-release.keystore
+
+# notes
+commands.txt
+
+# Build artifacts
+src/build/
+src/dist/
+
+# Python cache
+src/game/__pycache__/
