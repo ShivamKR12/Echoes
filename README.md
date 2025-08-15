@@ -128,20 +128,20 @@ Use BundleTool to convert your `.aab` to `.apks`:
 
 **Windows:**
 ```powershell
-java -jar "Path/To/BundleTool/bundletool.jar" build-apks --bundle "./dist/app-release.aab" --output "./dist/app.apks"  --ks "Path\To\Your-keystore.keystore" --ks-pass pass:your_keystore_password --ks-key-alias <alias-name> --key-pass pass:your_keystore_password --mode universal --verbose
+java -jar "Path/To/BundleTool/bundletool.jar" build-apks --bundle "./dist/app-release.aab" --output "./dist/app.apks"  --ks "Path/To/Your-keystore.keystore" --ks-pass pass:your_keystore_password --ks-key-alias <alias-name> --key-pass pass:your_keystore_password --mode universal --verbose
 ```
 
 **macOS:**
 ```zsh
-java -jar "Path/To/BundleTool/bundletool.jar" build-apks --bundle "./dist/app-release.aab" --output "./dist/app.apks"  --ks "Path\To\Your-keystore.keystore" --ks-pass pass:your_keystore_password --ks-key-alias <alias-name> --key-pass pass:your_keystore_password --mode universal --verbose
+java -jar "Path/To/BundleTool/bundletool.jar" build-apks --bundle "./dist/app-release.aab" --output "./dist/app.apks"  --ks "Path/To/Your-keystore.keystore" --ks-pass pass:your_keystore_password --ks-key-alias <alias-name> --key-pass pass:your_keystore_password --mode universal --verbose
 ```
 
 **Linux:**
 ```bash
-java -jar "Path/To/BundleTool/bundletool.jar" build-apks --bundle "./dist/app-release.aab" --output "./dist/app.apks"  --ks "Path\To\Your-keystore.keystore" --ks-pass pass:your_keystore_password --ks-key-alias <alias-name> --key-pass pass:your_keystore_password --mode universal --verbose
+java -jar "Path/To/BundleTool/bundletool.jar" build-apks --bundle "./dist/app-release.aab" --output "./dist/app.apks"  --ks "Path/To/Your-keystore.keystore" --ks-pass pass:your_keystore_password --ks-key-alias <alias-name> --key-pass pass:your_keystore_password --mode universal --verbose
 ```
 
-If you get a file exists error, delete `dist\app.apks` and try again.
+If you get a file exists error, delete `dist/app.apks` and try again.
 
 then extract the `.apk` output of the `.apks` using any archieve extractors. or you can do :
 
@@ -175,7 +175,7 @@ mkdir -p /path/to/extract/folder
 unzip /path/to/app.apks -d /path/to/extract/folder
 ```
 
-**Install APKS on Your Device:**
+**Install the APK on Your Device:**
 
 Connect your device and verify with:
 

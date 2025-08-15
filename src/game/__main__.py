@@ -6,9 +6,12 @@ from ursina import *
 from ursina.prefabs.draggable import Draggable
 from ursina.prefabs.health_bar import HealthBar
 from ursina.sequence import Sequence
+from ursina.ursinamath import lerp
 
 app = Ursina()
 window.vsync = False
+window.borderless = True
+window.fullscreen = True
 
 main_menu = None
 pause_menu = None
@@ -183,6 +186,59 @@ class HealthMixin:
         print(f'{self} died.')
         destroy(self)
 
+class DynamicCrosshair(Entity):
+    def __init__(self, player=None, line_length=0.03, line_thickness=0.002,
+                 reticle_speed=5, reticle_distance=0.02, dot_scale=0.01, **kwargs):
+        super().__init__(parent=camera.ui, position=(0,0))
+        
+        self.player = player  # reference to player entity
+        self.reticle_speed = reticle_speed
+        self.reticle_distance = reticle_distance
+
+        # Shooting offset
+        self.shoot_offset = 0
+
+        # Center dot
+        self.dot = Entity(parent=self, model='circle', color=color.white, scale=dot_scale, position=(0,0))
+
+        # Create crosshair lines
+        self.lines = {}
+        self.lines['top'] = Entity(parent=self, model='quad', color=color.white,
+                                   scale=(line_thickness, line_length), position=(0, line_length/2 + 0.01))
+        self.lines['bottom'] = Entity(parent=self, model='quad', color=color.white,
+                                      scale=(line_thickness, line_length), position=(0, -line_length/2 - 0.01))
+        self.lines['left'] = Entity(parent=self, model='quad', color=color.white,
+                                    scale=(line_length, line_thickness), position=(-line_length/2 - 0.01, 0))
+        self.lines['right'] = Entity(parent=self, model='quad', color=color.white,
+                                     scale=(line_length, line_thickness), position=(line_length/2 + 0.01, 0))
+        
+        # Store original positions for interpolation
+        self.original_positions = {k: v.position for k,v in self.lines.items()}
+
+    def update(self):
+        # Player speed
+        speed = getattr(self.player, 'velocity', Vec3(0,0,0)).length() if self.player else 1
+
+        # Total offset = movement + shooting
+        total_offset = speed * self.reticle_distance + self.shoot_offset
+
+        for direction, line in self.lines.items():
+            x, y = 0, 0
+            if direction == 'top':
+                y = self.original_positions['top'].y + total_offset
+            elif direction == 'bottom':
+                y = self.original_positions['bottom'].y - total_offset
+            elif direction == 'left':
+                x = self.original_positions['left'].x - total_offset
+            elif direction == 'right':
+                x = self.original_positions['right'].x + total_offset
+
+            # Smoothly interpolate
+            line.position = lerp(line.position, Vec3(x, y, 0), time.dt * self.reticle_speed)
+
+        # Gradually decay shooting offset
+        self.shoot_offset = lerp(self.shoot_offset, 0, time.dt * 10)
+
 class FirstPersonController(Entity, HealthMixin):
     """
     A basic first-person character:
@@ -194,15 +250,6 @@ class FirstPersonController(Entity, HealthMixin):
         super().__init__()
 
         HealthMixin.__init__(self, health=100)
-
-        # 1) On-screen cursor
-        self.cursor = Entity(
-            parent=camera.ui,
-            model='quad',
-            color=color.pink,
-            scale=.008,
-            rotation_z=45
-        )
 
         # 2) Movement parameters
         self.speed            = 5
@@ -231,6 +278,9 @@ class FirstPersonController(Entity, HealthMixin):
         self.gun             = None
 
         self._next_fire_time = 0
+
+        # Create dynamic crosshair, passing self as the player reference
+        self.crosshair = DynamicCrosshair(player=self)
 
         # Apply any overrides passed in
         for key, value in kwargs.items():
@@ -263,6 +313,7 @@ class FirstPersonController(Entity, HealthMixin):
         # 2) Move via left joystick
         move      = joystick_move.value
         direction = Vec3(self.forward * move.y + self.right * move.x).normalized()
+        self.velocity = direction * self.speed  # Store velocity vector
 
         if direction:
             # Prevent walking through walls
@@ -388,6 +439,8 @@ class FirstPersonController(Entity, HealthMixin):
             target = hit.entity
             if hasattr(target, 'take_damage'):
                 target.take_damage(50)
+        
+        self.crosshair.shoot_offset = 0.03  # Temporarily increase
 
     def take_damage(self, amount):
         super().take_damage(amount)
