@@ -4,7 +4,6 @@ from setuptools import setup
 PRC_DATA = '''
 load-display pandagles2
 aux-display pandagles
-
 notify-level info
 gl-debug true
 '''
@@ -40,17 +39,23 @@ setup(
 				'game/**',
                 # Don't remove this, it is to include ursina assets
                 'ursina_assets/**',
+                'game/assets/**',
                 '**/*.png',
                 '**/*.jpg',
                 '**/*.egg',
-                'game/assets/**',
+                '**/*.bam',
                 '**/*.gltf',
+                '**/*.bin',
                 '**/*.wav',
+                '**/*.obj',
+                '**/*.mtl',
+                '**/*.blend',
+                '**/*.blend1',
             ],
             'extra_prc_data': PRC_DATA,
 
             # Here, you can change the icon
-            'icons': {'*': 'logo.png'},
+            'icons': {'*': 'game/assets/new-logo.png'},
         },
     },
     # Choosing a classifier in the Games category makes it marked a "Game"

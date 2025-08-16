@@ -279,6 +279,12 @@ class FirstPersonController(Entity, HealthMixin):
 
         self._next_fire_time = 0
 
+        # Head bob settings
+        self.headbob_amplitude = 0.05   # How much the camera moves up/down
+        self.headbob_frequency = 2.0    # How fast the bob cycles
+        self.headbob_timer = 0.0        # Internal timer for sine wave
+        self.camera_original_pos = camera.position
+
         # Create dynamic crosshair, passing self as the player reference
         self.crosshair = DynamicCrosshair(player=self)
 
@@ -354,6 +360,23 @@ class FirstPersonController(Entity, HealthMixin):
                     down_ray.distance - .05
                 ) * time.dt * 100
                 self.air_time += time.dt * .25 * self.gravity
+        
+        displacement = self.velocity.length()  # speed player is trying to move
+
+        if self.grounded and displacement > 0.01:  # only bob if actually moved
+            # Increment timer based on speed
+            self.headbob_timer += time.dt * self.headbob_frequency * (displacement / self.speed)
+            # Sine wave for vertical bob
+            bob_offset = math.sin(self.headbob_timer * math.pi * 2) * self.headbob_amplitude
+            # horizontal sway for a more natural effect
+            sway_offset = math.sin(self.headbob_timer * math.pi * 4) * (self.headbob_amplitude / 2)
+            # Apply to camera
+            camera.position = self.camera_original_pos + Vec3(sway_offset, bob_offset, 0)
+        else:
+            # Smoothly return camera to original position
+            camera.position = lerp(camera.position, self.camera_original_pos, time.dt * 8)
+        
+        self._prev_position = self.position
 
     def input(self, key: str) -> None:
         # Toggle touch controls
@@ -505,29 +528,6 @@ class DummyTarget(Entity, HealthMixin):
         for b in scene.entities:
             if isinstance(b, Entity) and getattr(b, 'collider', None) == 'box' and b.model.name == 'cube':
                 destroy(b)
-
-    # def die(self):
-    #     print(f'{self} died.')
-    #     # properly disable the whole node (model, collider, children)
-    #     self.health_bar.disable()
-    #     self.disable()
-    #     invoke(self.respawn, delay=3)
-
-    # def respawn(self):
-    #     # re-enable the whole node (restores transform, collider, children)
-    #     self.enable()
-    #     # put it back at its spawn point
-    #     self.position = self.spawn_point
-    #     # reset any rotations / scales (avoid leftover singular transforms)
-    #     self.rotation = Vec3(0, 0, 0)
-    #     self.scale    = Vec3(1, 2, 1)
-
-    #     # reset health & health bar
-    #     self.health_bar.value = 100
-    #     self.health_bar.enable()
-    #     self.health = 100
-
-    #     print(f'{self} respawned at {self.position}')
 
 class AIBot(DummyTarget):
     def __init__(self, patrol_area=(10, 10), chase_range=5, speed = 1, **kwargs):
@@ -740,25 +740,6 @@ class AIBot(DummyTarget):
             position=self.spawn_point
         ), delay=3)
 
-    # def die(self):
-    #     print(f'{self} died.')
-    #     super().die()
-    #     self.alive = False
-    #     if hasattr(self, 'update_task'):
-    #         self.update_task.finish()
-
-    # def respawn(self):
-    #     # 1) do the standard enable/transform/health reset
-    #     super().respawn()
-
-    #     # 2) restore AIBot-specific flags
-    #     self.alive = True
-    #     self.target_pos = self.get_valid_ground_position()
-
-    #     # 3) re-schedule patrol
-    #     self.update_task = invoke(self.patrol, delay=1)
-    #     print(f'{self} patrol re-scheduled:', self.update_task)
-
 def show_main_menu():
     global main_menu, menu_background
 
@@ -835,13 +816,17 @@ def start_singleplayer():
 
     # Clean up old bots & tasks
     for t in bot_tasks:
+        print(f"Finishing bot task before starting singleplayer: {t}")
         t.finish()
     bot_tasks.clear()
     for b in ai_bots:
+        print(f"Destroying AI bot before starting singleplayer: {b}")
         destroy(b)
     ai_bots.clear()
     for seq in sequences:
+        print(f"Finishing sequence before starting singleplayer: {seq}")
         if isinstance(seq, Sequence):
+            print(f"Finishing sequence instance before starting singleplayer: {seq}")
             seq.finish()
     sequences.clear()
 
@@ -872,42 +857,51 @@ def quit_to_main_menu():
 
         # 2) Finish & clear *all* Sequences (including any HealthBar tweens)
         for seq in list(sequences):
+            print(f"Finishing sequence before quiting to main menu: {seq}")
             if isinstance(seq, Sequence):
+                print(f"Finishing sequence instance before quiting to main menu: {seq}")
                 seq.finish()
         sequences.clear()
 
         # 3) Finish any lingering bot or AI tasks
         for t in list(bot_tasks):
+            print(f"Finishing bot task before quiting to main menu: {t}")
             t.finish()
         bot_tasks.clear()
 
         # 4) Destroy every AI bot instance
         for b in list(ai_bots):
+            print(f"Destroying AI bot before quiting to main menu: {b}")
             destroy(b)
         ai_bots.clear()
 
         # 5) Destroy the player (and its entire sub‐hierarchy)
         if player:
+            print(f"Destroying player before quiting to main menu: {player}")
             destroy(player)
             player = None
 
         # 6) Destroy *every* entity in the main scene
         #    (this hits ground, buildings, walls, bullets, etc.)
         for e in list(scene.entities):
+            print(f"Destroying scene entity before quiting to main menu: {e}")
             destroy(e)
 
         # 7) Destroy *every* UI element under camera.ui
         for e in list(camera.ui.children):
+            print(f"Destroying UI element before quiting to main menu: {e}")
             destroy(e)
 
         # 8) Destroy any remaining sky instances & lights
         for s in list(Sky.instances):
+            print(f"Destroying sky instance before quiting to main menu: {s}")
             destroy(s)
         Sky.instances.clear()
 
         # 9) Teardown menus or background if somehow left
         for ui_root in (main_menu, menu_background, pause_menu):
             if ui_root:
+                print(f"Destroying UI root before quiting to main menu: {ui_root}")
                 destroy(ui_root)
         main_menu = None
         menu_background = None
@@ -935,24 +929,32 @@ def game_over():
         except Exception as e:
             print(f"Could not disable pause_button: {e}")
     # cancel all bot‑patrol invokes
-    for t in bot_tasks:    t.finish()
+    for t in bot_tasks:
+        print(f"Finishing bot task before game over: {t}")
+        t.finish()
     bot_tasks.clear()
 
     # destroy remaining bots
-    for b in ai_bots:      destroy(b)
+    for b in ai_bots:
+        print(f"Destroying AI bot before game over: {b}")
+        destroy(b)
     ai_bots.clear()
 
     # cancel all animations
     for item in sequences:
+        print(f"Finishing sequence before game over: {item}")
         if isinstance(item, Sequence):
+            print(f"Finishing sequence instance before game over: {item}")
             item.finish()
     sequences.clear()
     # Destroy all scene entities except the camera and UI
     for e in scene.entities:
+        print(f"Destroying scene entity before game over: {e}")
         destroy(e)
     # Clear UI except pause button (optional)
     for e in camera.ui.children:
         if e != pause_button:
+            print(f"Destroying UI element before game over: {e}")
             destroy(e)
     show_main_menu()
 
