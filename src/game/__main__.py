@@ -5,6 +5,7 @@ setup_ursina_android()
 from ursina import *
 from ursina.prefabs.draggable import Draggable
 from ursina.prefabs.health_bar import HealthBar
+from ursina.prefabs.slider import Slider
 from ursina.sequence import Sequence
 from ursina.ursinamath import lerp
 import math
@@ -18,6 +19,8 @@ window.fullscreen = True
 main_menu = None
 pause_menu = None
 pause_button = None
+settings_menu = None
+settings_button = None
 game_started = False
 player_alive = True
 menu_background = None
@@ -805,25 +808,111 @@ def show_main_menu():
 
 def show_pause_menu():
     global pause_menu
+    
     pause_menu = Entity(parent=camera.ui)
 
-    Text("Paused", scale=2, x=-0.1, y=0.3, parent=pause_menu)
+    Text("Paused", scale=2, x=-0.1, y=0.4, parent=pause_menu)
 
     Button(
         text='Resume',
         scale=(.3, .1),
-        y=0.1,
+        y=0.2,
         parent=pause_menu,
         on_click=resume_game
     )
 
+    # Button(
+    #     text='Settings',
+    #     scale=(.3, .1),
+    #     y=0.0,
+    #     parent=pause_menu,
+    #     on_click=show_settings_menu
+    # )
+
     Button(
         text='Quit to Menu',
         scale=(.3, .1),
-        y=-0.1,
+        y=-0.2,
         parent=pause_menu,
         on_click=quit_to_main_menu
     )
+
+    # Hide virtual joysticks, buttons, health bar and crosshair when pause menu is shown
+    if joystick_move:
+        joystick_move.enabled = False
+    if joystick_look:
+        joystick_look.enabled = False
+    if button_jump:
+        button_jump.enabled = False
+    if button_shoot:
+        button_shoot.enabled = False
+    if player and hasattr(player, 'health_bar') and player.health_bar:
+        player.health_bar.enabled = False
+    if player and hasattr(player, 'crosshair') and player.crosshair:
+        player.crosshair.enabled = False
+
+# def show_settings_menu():
+#     global settings_menu
+
+#     pause_menu.enabled = False
+
+#     settings_menu = Entity(parent=camera.ui)
+
+#     # Title stays centered
+#     Text("Settings", parent=settings_menu, y=.45, scale=2)
+
+#     # Column positions (safe zone)
+#     left_x = -0.45
+#     right_x = 0.35
+
+#     # Vertical spacing
+#     start_y = 0.3
+#     step = -0.15
+
+#     # Row 1
+#     headbob_slider = Slider(min=0, max=0.2, default=player.headbob_amplitude, step=0.01, 
+#                             text=f"Headbob Amplitude: {player.headbob_amplitude:.2f}", x=left_x, y=start_y, parent=settings_menu)
+#     headbob_slider.on_value_changed = lambda val: setattr(player, 'headbob_amplitude', val) or setattr(headbob_slider, 'text', f"Headbob Amplitude: {val:.2f}")
+
+#     freq_slider = Slider(min=0.5, max=5, default=player.headbob_frequency, step=0.1,
+#                          text=f"Headbob Frequency: {player.headbob_frequency:.2f}", x=right_x, y=start_y, parent=settings_menu)
+#     freq_slider.on_value_changed = lambda val: setattr(player, 'headbob_frequency', val) or setattr(freq_slider, 'text', f"Headbob Frequency: {val:.2f}")
+    
+#     # Row 2
+#     fov_slider = Slider(min=60, max=120, default=camera.fov, step=1,
+#                         text=f"FOV: {camera.fov}", x=left_x, y=start_y+step, parent=settings_menu)
+#     fov_slider.on_value_changed = lambda val: setattr(camera, 'fov', val) or setattr(fov_slider, 'text', f"FOV: {val}")
+
+#     speed_slider = Slider(min=1, max=20, default=player.speed, step=0.5,
+#                           text=f"Player Speed: {player.speed:.1f}", x=right_x, y=start_y+step, parent=settings_menu)
+#     speed_slider.on_value_changed = lambda val: setattr(player, 'speed', val) or setattr(speed_slider, 'text', f"Player Speed: {val:.1f}")
+
+#     # Row 3
+#     gravity_slider = Slider(min=0.1, max=5, default=player.gravity, step=0.1,
+#                             text=f"Gravity: {player.gravity:.1f}", x=left_x, y=start_y+step*2, parent=settings_menu)
+#     gravity_slider.on_value_changed = lambda val: setattr(player, 'gravity', val) or setattr(gravity_slider, 'text', f"Gravity: {val:.1f}")
+
+#     jump_slider = Slider(min=0.5, max=5, default=player.jump_height, step=0.1,
+#                          text=f"Jump Height: {player.jump_height:.1f}", x=right_x, y=start_y+step*2, parent=settings_menu)
+#     jump_slider.on_value_changed = lambda val: setattr(player, 'jump_height', val) or setattr(jump_slider, 'text', f"Jump Height: {val:.1f}")
+
+#     # Row 4
+#     recoil_pitch_slider = Slider(min=0, max=2, default=player.recoil_amount[0], step=0.1,
+#                                  text=f"Recoil Pitch: {player.recoil_amount[0]:.1f}", x=left_x, y=start_y+step*3, parent=settings_menu)
+#     recoil_pitch_slider.on_value_changed = lambda val: setattr(player, 'recoil_amount', Vec2(val, player.recoil_amount[1])) or setattr(recoil_pitch_slider, 'text', f"Recoil Pitch: {val:.1f}")
+
+#     recoil_yaw_slider = Slider(min=0, max=2, default=player.recoil_amount[1], step=0.1,
+#                                text=f"Recoil Yaw: {player.recoil_amount[1]:.1f}", x=right_x, y=start_y+step*3, parent=settings_menu)
+#     recoil_yaw_slider.on_value_changed = lambda val: setattr(player, 'recoil_amount', Vec2(player.recoil_amount[0], val)) or setattr(recoil_yaw_slider, 'text', f"Recoil Yaw: {val:.1f}")
+
+#     # Back button moved up
+#     Button(
+#         text='Back',
+#         scale=(.2, .08),
+#         y=-.35,
+#         parent=settings_menu,
+#         on_click=lambda: (setattr(settings_menu, 'enabled', False), setattr(pause_menu, 'enabled', True))
+#     )
 
 def start_singleplayer():
     global game_started, menu_background, main_menu, player_alive
@@ -865,6 +954,20 @@ def resume_game():
     application.resume()
     destroy(pause_menu)
     pause_button.enabled = True
+    
+    # Re-enable virtual joysticks, buttons, health bar and crosshair when resuming
+    if joystick_move:
+        joystick_move.enabled = True
+    if joystick_look:
+        joystick_look.enabled = True
+    if button_jump:
+        button_jump.enabled = True
+    if button_shoot:
+        button_shoot.enabled = True
+    if player and hasattr(player, 'health_bar') and player.health_bar:
+        player.health_bar.enabled = True
+    if player and hasattr(player, 'crosshair') and player.crosshair:
+        player.crosshair.enabled = True
 
 def quit_to_main_menu():
 
@@ -1117,6 +1220,8 @@ def setup_game():
 def update():
     if mouse.left and isinstance(mouse.hovered_entity, Button):
         return
+    
+    print("mouse.hovered_entity :", mouse.hovered_entity)
 
 show_main_menu()
 app.run()
