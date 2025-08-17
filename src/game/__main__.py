@@ -884,14 +884,36 @@ def quit_to_main_menu():
 
         # 3) Finish any lingering bot or AI tasks
         for t in list(bot_tasks):
-            print(f"Finishing bot task before quiting to main menu: {t}")
-            t.finish()
+            if not t:
+                continue
+
+            # If it's a Sequence, just finish it
+            if isinstance(t, Sequence):
+                print(f"Finishing bot Sequence before quitting to main menu: {t}")
+                try:
+                    t.finish()
+                except Exception as e:
+                    print(f"Could not finish Sequence {t}: {e}")
+                continue
+
+            # If it's some other task-like object with .finish
+            if hasattr(t, 'finish'):
+                print(f"Finishing bot task before quitting to main menu: {t}")
+                try:
+                    t.finish()
+                except Exception as e:
+                    print(f"Could not finish bot task {t}: {e}")
         bot_tasks.clear()
 
         # 4) Destroy every AI bot instance
         for b in list(ai_bots):
-            print(f"Destroying AI bot before quiting to main menu: {b}")
-            destroy(b)
+            if not b:
+                continue
+            try:
+                print(f"Destroying AI bot before quitting to main menu: {b}")
+                destroy(b)
+            except Exception as e:
+                print(f"Could not destroy AI bot {b}: {e}")
         ai_bots.clear()
 
         # 5) Destroy the player (and its entire sub‐hierarchy)
@@ -901,27 +923,31 @@ def quit_to_main_menu():
             player = None
 
         # 6) Destroy *every* entity in the main scene
-        #    (this hits ground, buildings, walls, bullets, etc.)
+        # (this hits ground, buildings, walls, bullets, etc.)
         for e in list(scene.entities):
-            print(f"Destroying scene entity before quiting to main menu: {e}")
-            destroy(e)
+            if e:
+                print(f"Destroying scene entity before quiting to main menu: {e}")
+                destroy(e)
 
         # 7) Destroy *every* UI element under camera.ui
         for e in list(camera.ui.children):
-            print(f"Destroying UI element before quiting to main menu: {e}")
-            destroy(e)
+            if e:
+                print(f"Destroying UI element before quiting to main menu: {e}")
+                destroy(e)
 
         # 8) Destroy any remaining sky instances & lights
         for s in list(Sky.instances):
-            print(f"Destroying sky instance before quiting to main menu: {s}")
-            destroy(s)
+            if s and not s.destroyed:
+                print(f"Destroying sky instance before quiting to main menu: {s}")
+                destroy(s)
         Sky.instances.clear()
 
         # 9) Teardown menus or background if somehow left
         for ui_root in (main_menu, menu_background, pause_menu):
-            if ui_root:
+            if ui_root and not ui_root.destroyed:
                 print(f"Destroying UI root before quiting to main menu: {ui_root}")
                 destroy(ui_root)
+
         main_menu = None
         menu_background = None
         pause_menu = None
@@ -940,39 +966,46 @@ def quit_to_main_menu():
 
 def game_over():
     global pause_button
+
     print("Game Over - Returning to Main Menu")
+
     # Safely disable pause_button if it exists and is valid
     if pause_button and hasattr(pause_button, 'enabled') and pause_button.enabled:
         try:
             pause_button.enabled = False
         except Exception as e:
             print(f"Could not disable pause_button: {e}")
+
     # cancel all bot‑patrol invokes
-    for t in bot_tasks:
+    for t in list(bot_tasks):
         print(f"Finishing bot task before game over: {t}")
         t.finish()
     bot_tasks.clear()
 
     # destroy remaining bots
     for b in ai_bots:
-        print(f"Destroying AI bot before game over: {b}")
-        destroy(b)
+        if b and not b.destroyed:
+            print(f"Destroying AI bot before game over: {b}")
+            destroy(b)
     ai_bots.clear()
 
     # cancel all animations
-    for item in sequences:
+    for item in list(sequences):
         print(f"Finishing sequence before game over: {item}")
         if isinstance(item, Sequence):
             print(f"Finishing sequence instance before game over: {item}")
             item.finish()
     sequences.clear()
+
     # Destroy all scene entities except the camera and UI
-    for e in scene.entities:
-        print(f"Destroying scene entity before game over: {e}")
-        destroy(e)
+    for e in list(scene.entities):
+        if e and not e.destroyed:
+            print(f"Destroying scene entity before game over: {e}")
+            destroy(e)
+
     # Clear UI except pause button (optional)
-    for e in camera.ui.children:
-        if e != pause_button:
+    for e in list(camera.ui.children):
+        if e and e != pause_button and not e.destroyed:
             print(f"Destroying UI element before game over: {e}")
             destroy(e)
     show_main_menu()
