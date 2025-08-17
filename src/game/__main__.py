@@ -7,6 +7,8 @@ from ursina.prefabs.draggable import Draggable
 from ursina.prefabs.health_bar import HealthBar
 from ursina.sequence import Sequence
 from ursina.ursinamath import lerp
+import math
+import random
 
 app = Ursina()
 window.vsync = False
@@ -285,6 +287,11 @@ class FirstPersonController(Entity, HealthMixin):
         self.headbob_timer = 0.0        # Internal timer for sine wave
         self.camera_original_pos = camera.position
 
+        self.recoil_pitch = 0.0          # Current vertical recoil offset
+        self.recoil_yaw = 0.0            # Optional horizontal sway
+        self.recoil_recover_speed = 5.0  # How fast camera recovers from recoil
+        self.recoil_amount = Vec2(0.5, 0.1)  # (pitch, yaw) per shot
+
         # Create dynamic crosshair, passing self as the player reference
         self.crosshair = DynamicCrosshair(player=self)
 
@@ -378,6 +385,16 @@ class FirstPersonController(Entity, HealthMixin):
         
         self._prev_position = self.position
 
+        # Apply recoil recovery
+        if self.recoil_pitch != 0 or self.recoil_yaw != 0:
+            # Gradually return to zero
+            self.recoil_pitch = lerp(self.recoil_pitch, 0, time.dt * self.recoil_recover_speed)
+            self.recoil_yaw   = lerp(self.recoil_yaw, 0, time.dt * self.recoil_recover_speed)
+
+            # Apply recoil offsets to camera pivot
+            self.camera_pivot.rotation_x -= self.recoil_pitch
+            self.rotation_y       += self.recoil_yaw
+
     def input(self, key: str) -> None:
         # Toggle touch controls
         if key == 't':
@@ -435,6 +452,8 @@ class FirstPersonController(Entity, HealthMixin):
         self._next_fire_time = time.time() + 0.25  # 0.25s cooldown
         Audio('assets/gunshot.wav', loop=False, volume=0.2)
         self.gun.blink(color.gray)
+        self.recoil_pitch += self.recoil_amount.x
+        self.recoil_yaw   += random.uniform(-self.recoil_amount.y, self.recoil_amount.y)
         # Raycast for hit detection
         hit = raycast(
             camera.world_position,
