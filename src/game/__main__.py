@@ -5,6 +5,7 @@ setup_ursina_android()
 from ursina import *
 from ursina.prefabs.draggable import Draggable
 from ursina.prefabs.health_bar import HealthBar
+from ursina.prefabs.slider import Slider
 from ursina.sequence import Sequence
 # from ursina.ursinamath import lerp
 import math
@@ -16,6 +17,8 @@ window.vsync = False
 main_menu = None
 pause_menu = None
 pause_button = None
+settings_menu = None
+settings_button = None
 game_started = False
 player_alive = True
 menu_background = None
@@ -827,16 +830,24 @@ def show_pause_menu():
         name="btn_resume",
         text='Resume',
         scale=(.3, .1),
-        y=0.1,
+        y=0.2,
         parent=pause_menu,
         on_click=resume_game
     )
+
+    # Button(
+    #     text='Settings',
+    #     scale=(.3, .1),
+    #     y=0.0,
+    #     parent=pause_menu,
+    #     on_click=show_settings_menu
+    # )
 
     Button(
         name="btn_quit_to_menu",
         text='Quit to Menu',
         scale=(.3, .1),
-        y=-0.1,
+        y=-0.2,
         parent=pause_menu,
         on_click=quit_to_main_menu
     )
@@ -903,6 +914,20 @@ def resume_game():
     application.resume()
     destroy(pause_menu)
     pause_button.enabled = True
+    
+    # Re-enable virtual joysticks, buttons, health bar and crosshair when resuming
+    if joystick_move:
+        joystick_move.enabled = True
+    if joystick_look:
+        joystick_look.enabled = True
+    if button_jump:
+        button_jump.enabled = True
+    if button_shoot:
+        button_shoot.enabled = True
+    if player and hasattr(player, 'health_bar') and player.health_bar:
+        player.health_bar.enabled = True
+    if player and hasattr(player, 'crosshair') and player.crosshair:
+        player.crosshair.enabled = True
     
     # Re-enable virtual joysticks, buttons, health bar and crosshair when resuming
     if joystick_move:
@@ -1234,6 +1259,8 @@ def setup_game():
 def update():
     if mouse.left and isinstance(mouse.hovered_entity, Button):
         return
+    
+    print("mouse.hovered_entity :", mouse.hovered_entity)
 
 show_main_menu()
 app.run()
