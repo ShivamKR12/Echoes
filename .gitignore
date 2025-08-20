@@ -6,6 +6,7 @@ src/ursina-release.keystore
 
 # notes
 commands.txt
+logs.txt
 
 # Build artifacts
 src/build/

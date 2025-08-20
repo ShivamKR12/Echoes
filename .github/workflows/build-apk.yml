@@ -1,0 +1,107 @@
+name: Build Ursina APK
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Run daily at midnight UTC
+  push:
+    branches:
+      - main # Also trigger on push to main for testing
+
+jobs:
+  build-apk:
+    runs-on: windows-latest
+
+    steps:
+      # Check if there are new commits
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git fetch origin
+          $changes = git diff origin/main --name-only
+          if ($changes) {
+            echo "CHANGES_FOUND=true" >> $env:GITHUB_ENV
+          } else {
+            echo "CHANGES_FOUND=false" >> $env:GITHUB_ENV
+          }
+        shell: pwsh
+
+      # Checkout the repository
+      - name: Checkout repository
+        if: env.CHANGES_FOUND == 'true'
+        uses: actions/checkout@v4
+
+      # Set up Python 3.8
+      - name: Set up Python 3.8
+        if: env.CHANGES_FOUND == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      # Set up Java (required for keytool and BundleTool)
+      - name: Set up JDK 11
+        if: env.CHANGES_FOUND == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      # Install Python dependencies
+      - name: Install Python dependencies
+        if: env.CHANGES_FOUND == 'true'
+        run: |
+          cd src
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m pip install protobuf==3.20.0
+          python -m pip install https://buildbot.panda3d.org/downloads/68f0931f43284345893a90d5bba9ba5df8aa53bb/panda3d-1.11.0.dev2480-cp38-cp38-win_amd64.whl
+
+      # Build the Android App Bundle (AAB)
+      - name: Build AAB
+        if: env.CHANGES_FOUND == 'true'
+        run: |
+          cd src
+          python setup.py bdist_apps
+
+      # Generate signing key
+      - name: Generate signing key
+        if: env.CHANGES_FOUND == 'true'
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd src
+          keytool -genkeypair -alias Echoes-key -keyalg RSA -keysize 2048 -validity 10000 -keystore Echoes.keystore -storepass "$env:KEYSTORE_PASSWORD" -keypass "$env:KEY_PASSWORD" -dname "CN=Your Name, OU=YourUnit, O=YourOrg, L=YourCity, ST=YourState, C=YourCountry"
+
+      # Download BundleTool
+      - name: Download BundleTool
+        if: env.CHANGES_FOUND == 'true'
+        run: |
+          curl -L -o bundletool.jar https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
+
+      # Convert AAB to APKS
+      - name: Convert AAB to APKS
+        if: env.CHANGES_FOUND == 'true'
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd src
+          java -jar ..\bundletool.jar build-apks --bundle dist\Echoes-1.0.0_android.aab --output dist\Echoes.apks --ks Echoes.keystore --ks-pass pass:$env:KEYSTORE_PASSWORD --ks-key-alias Echoes-key --key-pass pass:$env:KEY_PASSWORD --mode universal --verbose
+
+      # Extract APK from APKS
+      - name: Extract APK
+        if: env.CHANGES_FOUND == 'true'
+        run: |
+          cd src\dist
+          New-Item -ItemType Directory -Path "Echoes_extracted" -Force
+          Rename-Item -Path "Echoes.apks" -NewName "Echoes.zip"
+          Expand-Archive -LiteralPath "Echoes.zip" -DestinationPath "Echoes_extracted" -Force
+
+      # Upload APK as artifact
+      - name: Upload APK
+        if: env.CHANGES_FOUND == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Echoes-apk
+          path: src/dist/Echoes_extracted/universal.apk
+          retention-days: 7

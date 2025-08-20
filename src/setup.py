@@ -55,7 +55,7 @@ setup(
             'extra_prc_data': PRC_DATA,
 
             # Here, you can change the icon
-            'icons': {'*': 'game/assets/new-logo.png'},
+            'icons': {'*': 'new-logo.png'},
         },
     },
     # Choosing a classifier in the Games category makes it marked a "Game"

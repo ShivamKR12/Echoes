@@ -6,14 +6,12 @@ from ursina import *
 from ursina.prefabs.draggable import Draggable
 from ursina.prefabs.health_bar import HealthBar
 from ursina.sequence import Sequence
-from ursina.ursinamath import lerp
+# from ursina.ursinamath import lerp
 import math
 import random
 
 app = Ursina()
 window.vsync = False
-window.borderless = True
-window.fullscreen = True
 
 main_menu = None
 pause_menu = None
@@ -30,6 +28,8 @@ joystick_move = None
 joystick_look = None
 button_jump = None
 button_shoot = None
+
+gunshot = Audio('assets/gunshot.wav', loop=False, autoplay=False, volume=0.2)
 
 class VirtualJoystick(Entity):
     """
@@ -64,12 +64,14 @@ class VirtualJoystick(Entity):
         self.bg = Entity(
             parent=self,
             model='circle',
-            color=color.rgba32(64, 64, 64, 150)
+            color=color.rgba32(64, 64, 64, 150),
+            name='joystick_bg'
         )
         self.knob = Draggable(
             parent=self,
             model='circle',
-            color=color.white
+            color=color.white,
+            name='joystick_knob'
         )
         self.knob.always_on_top   = True
         self.knob.start_position  = Vec2(0, 0)
@@ -188,58 +190,58 @@ class HealthMixin:
         print(f'{self} died.')
         destroy(self)
 
-class DynamicCrosshair(Entity):
-    def __init__(self, player=None, line_length=0.03, line_thickness=0.002,
-                 reticle_speed=5, reticle_distance=0.02, dot_scale=0.01, **kwargs):
-        super().__init__(parent=camera.ui, position=(0,0))
+# class DynamicCrosshair(Entity):
+#     def __init__(self, player=None, line_length=0.03, line_thickness=0.002,
+#                  reticle_speed=5, reticle_distance=0.02, dot_scale=0.01, **kwargs):
+#         super().__init__(parent=camera.ui, position=(0,0))
         
-        self.player = player  # reference to player entity
-        self.reticle_speed = reticle_speed
-        self.reticle_distance = reticle_distance
+#         self.player = player  # reference to player entity
+#         self.reticle_speed = reticle_speed
+#         self.reticle_distance = reticle_distance
 
-        # Shooting offset
-        self.shoot_offset = 0
+#         # Shooting offset
+#         self.shoot_offset = 0
 
-        # Center dot
-        self.dot = Entity(parent=self, model='circle', color=color.white, scale=dot_scale, position=(0,0))
+#         # Center dot
+#         self.dot = Entity(parent=self, model='circle', color=color.white, scale=dot_scale, position=(0,0), name='crosshair_dot')
 
-        # Create crosshair lines
-        self.lines = {}
-        self.lines['top'] = Entity(parent=self, model='quad', color=color.white,
-                                   scale=(line_thickness, line_length), position=(0, line_length/2 + 0.01))
-        self.lines['bottom'] = Entity(parent=self, model='quad', color=color.white,
-                                      scale=(line_thickness, line_length), position=(0, -line_length/2 - 0.01))
-        self.lines['left'] = Entity(parent=self, model='quad', color=color.white,
-                                    scale=(line_length, line_thickness), position=(-line_length/2 - 0.01, 0))
-        self.lines['right'] = Entity(parent=self, model='quad', color=color.white,
-                                     scale=(line_length, line_thickness), position=(line_length/2 + 0.01, 0))
+#         # Create crosshair lines
+#         self.lines = {}
+#         self.lines['top'] = Entity(parent=self, model='quad', color=color.white,
+#                                    scale=(line_thickness, line_length), position=(0, line_length/2 + 0.01), name='crosshair_top')
+#         self.lines['bottom'] = Entity(parent=self, model='quad', color=color.white,
+#                                       scale=(line_thickness, line_length), position=(0, -line_length/2 - 0.01), name='crosshair_bottom')
+#         self.lines['left'] = Entity(parent=self, model='quad', color=color.white,
+#                                     scale=(line_length, line_thickness), position=(-line_length/2 - 0.01, 0), name='crosshair_left')
+#         self.lines['right'] = Entity(parent=self, model='quad', color=color.white,
+#                                      scale=(line_length, line_thickness), position=(line_length/2 + 0.01, 0), name='crosshair_right')
         
-        # Store original positions for interpolation
-        self.original_positions = {k: v.position for k,v in self.lines.items()}
+#         # Store original positions for interpolation
+#         self.original_positions = {k: v.position for k,v in self.lines.items()}
 
-    def update(self):
-        # Player speed
-        speed = getattr(self.player, 'velocity', Vec3(0,0,0)).length() if self.player else 1
+#     def update(self):
+#         # Player speed
+#         speed = getattr(self.player, 'velocity', Vec3(0,0,0)).length() if self.player else 1
 
-        # Total offset = movement + shooting
-        total_offset = speed * self.reticle_distance + self.shoot_offset
+#         # Total offset = movement + shooting
+#         total_offset = speed * self.reticle_distance + self.shoot_offset
 
-        for direction, line in self.lines.items():
-            x, y = 0, 0
-            if direction == 'top':
-                y = self.original_positions['top'].y + total_offset
-            elif direction == 'bottom':
-                y = self.original_positions['bottom'].y - total_offset
-            elif direction == 'left':
-                x = self.original_positions['left'].x - total_offset
-            elif direction == 'right':
-                x = self.original_positions['right'].x + total_offset
+#         for direction, line in self.lines.items():
+#             x, y = 0, 0
+#             if direction == 'top':
+#                 y = self.original_positions['top'].y + total_offset
+#             elif direction == 'bottom':
+#                 y = self.original_positions['bottom'].y - total_offset
+#             elif direction == 'left':
+#                 x = self.original_positions['left'].x - total_offset
+#             elif direction == 'right':
+#                 x = self.original_positions['right'].x + total_offset
 
-            # Smoothly interpolate
-            line.position = lerp(line.position, Vec3(x, y, 0), time.dt * self.reticle_speed)
+#             # Smoothly interpolate
+#             line.position = lerp(line.position, Vec3(x, y, 0), time.dt * self.reticle_speed)
 
-        # Gradually decay shooting offset
-        self.shoot_offset = lerp(self.shoot_offset, 0, time.dt * 10)
+#         # Gradually decay shooting offset
+#         self.shoot_offset = lerp(self.shoot_offset, 0, time.dt * 10)
 
 class FirstPersonController(Entity, HealthMixin):
     """
@@ -256,7 +258,7 @@ class FirstPersonController(Entity, HealthMixin):
         # 2) Movement parameters
         self.speed            = 5
         self.height           = 2
-        self.camera_pivot     = Entity(parent=self, y=self.height)
+        self.camera_pivot     = Entity(parent=self, y=self.height, name='camera_pivot')
         camera.parent        = self.camera_pivot
         camera.position      = (0, 0, 0)
         camera.rotation      = (0, 0, 0)
@@ -281,19 +283,19 @@ class FirstPersonController(Entity, HealthMixin):
 
         self._next_fire_time = 0
 
-        # Head bob settings
-        self.headbob_amplitude = 0.05   # How much the camera moves up/down
-        self.headbob_frequency = 2.0    # How fast the bob cycles
-        self.headbob_timer = 0.0        # Internal timer for sine wave
-        self.camera_original_pos = camera.position
+        # # Head bob settings
+        # self.headbob_amplitude = 0.05   # How much the camera moves up/down
+        # self.headbob_frequency = 2.0    # How fast the bob cycles
+        # self.headbob_timer = 0.0        # Internal timer for sine wave
+        # self.camera_original_pos = camera.position
 
-        self.recoil_pitch = 0.0          # Current vertical recoil offset
-        self.recoil_yaw = 0.0            # Optional horizontal sway
-        self.recoil_recover_speed = 5.0  # How fast camera recovers from recoil
-        self.recoil_amount = Vec2(0.5, 0.1)  # (pitch, yaw) per shot
+        # self.recoil_pitch = 0.0          # Current vertical recoil offset
+        # self.recoil_yaw = 0.0            # Optional horizontal sway
+        # self.recoil_recover_speed = 5.0  # How fast camera recovers from recoil
+        # self.recoil_amount = Vec2(0.5, 0.1)  # (pitch, yaw) per shot
 
-        # Create dynamic crosshair, passing self as the player reference
-        self.crosshair = DynamicCrosshair(player=self)
+        # # Create dynamic crosshair, passing self as the player reference
+        # self.crosshair = DynamicCrosshair(player=self)
 
         # Apply any overrides passed in
         for key, value in kwargs.items():
@@ -326,7 +328,7 @@ class FirstPersonController(Entity, HealthMixin):
         # 2) Move via left joystick
         move      = joystick_move.value
         direction = Vec3(self.forward * move.y + self.right * move.x).normalized()
-        self.velocity = direction * self.speed  # Store velocity vector
+        # self.velocity = direction * self.speed  # Store velocity vector
 
         if direction:
             # Prevent walking through walls
@@ -368,32 +370,32 @@ class FirstPersonController(Entity, HealthMixin):
                 ) * time.dt * 100
                 self.air_time += time.dt * .25 * self.gravity
         
-        displacement = self.velocity.length()  # speed player is trying to move
+        # displacement = self.velocity.length()  # speed player is trying to move
 
-        if self.grounded and displacement > 0.01:  # only bob if actually moved
-            # Increment timer based on speed
-            self.headbob_timer += time.dt * self.headbob_frequency * (displacement / self.speed)
-            # Sine wave for vertical bob
-            bob_offset = math.sin(self.headbob_timer * math.pi * 2) * self.headbob_amplitude
-            # horizontal sway for a more natural effect
-            sway_offset = math.sin(self.headbob_timer * math.pi * 4) * (self.headbob_amplitude / 2)
-            # Apply to camera
-            camera.position = self.camera_original_pos + Vec3(sway_offset, bob_offset, 0)
-        else:
-            # Smoothly return camera to original position
-            camera.position = lerp(camera.position, self.camera_original_pos, time.dt * 8)
+        # if self.grounded and displacement > 0.01:  # only bob if actually moved
+        #     # Increment timer based on speed
+        #     self.headbob_timer += time.dt * self.headbob_frequency * (displacement / self.speed)
+        #     # Sine wave for vertical bob
+        #     bob_offset = math.sin(self.headbob_timer * math.pi * 2) * self.headbob_amplitude
+        #     # horizontal sway for a more natural effect
+        #     sway_offset = math.sin(self.headbob_timer * math.pi * 4) * (self.headbob_amplitude / 2)
+        #     # Apply to camera
+        #     camera.position = self.camera_original_pos + Vec3(sway_offset, bob_offset, 0)
+        # else:
+        #     # Smoothly return camera to original position
+        #     camera.position = lerp(camera.position, self.camera_original_pos, time.dt * 8)
         
-        self._prev_position = self.position
+        # self._prev_position = self.position
 
-        # Apply recoil recovery
-        if self.recoil_pitch != 0 or self.recoil_yaw != 0:
-            # Gradually return to zero
-            self.recoil_pitch = lerp(self.recoil_pitch, 0, time.dt * self.recoil_recover_speed)
-            self.recoil_yaw   = lerp(self.recoil_yaw, 0, time.dt * self.recoil_recover_speed)
+        # # Apply recoil recovery
+        # if self.recoil_pitch != 0 or self.recoil_yaw != 0:
+        #     # Gradually return to zero
+        #     self.recoil_pitch = lerp(self.recoil_pitch, 0, time.dt * self.recoil_recover_speed)
+        #     self.recoil_yaw   = lerp(self.recoil_yaw, 0, time.dt * self.recoil_recover_speed)
 
-            # Apply recoil offsets to camera pivot
-            self.camera_pivot.rotation_x -= self.recoil_pitch
-            self.rotation_y       += self.recoil_yaw
+        #     # Apply recoil offsets to camera pivot
+        #     self.camera_pivot.rotation_x -= self.recoil_pitch
+        #     self.rotation_y       += self.recoil_yaw
 
     def input(self, key: str) -> None:
         # Toggle touch controls
@@ -450,10 +452,10 @@ class FirstPersonController(Entity, HealthMixin):
         if hasattr(self, '_next_fire_time') and time.time() < self._next_fire_time:
             return
         self._next_fire_time = time.time() + 0.25  # 0.25s cooldown
-        Audio('assets/gunshot.wav', loop=False, volume=0.2)
+        gunshot.play()
         self.gun.blink(color.gray)
-        self.recoil_pitch += self.recoil_amount.x
-        self.recoil_yaw   += random.uniform(-self.recoil_amount.y, self.recoil_amount.y)
+        # self.recoil_pitch += self.recoil_amount.x
+        # self.recoil_yaw   += random.uniform(-self.recoil_amount.y, self.recoil_amount.y)
         # Raycast for hit detection
         hit = raycast(
             camera.world_position,
@@ -467,7 +469,8 @@ class FirstPersonController(Entity, HealthMixin):
             model='cube',
             scale=0.2,
             position=(0.2, 0.1, 0),
-            color=color.gold
+            color=color.gold,
+            name='player_bullet'
         )
         bullet.world_parent = scene
         seq=bullet.animate_position(
@@ -482,7 +485,7 @@ class FirstPersonController(Entity, HealthMixin):
             if hasattr(target, 'take_damage'):
                 target.take_damage(50)
         
-        self.crosshair.shoot_offset = 0.03  # Temporarily increase
+        # self.crosshair.shoot_offset = 0.03  # Temporarily increase
 
     def take_damage(self, amount):
         super().take_damage(amount)
@@ -504,6 +507,7 @@ class DummyTarget(Entity, HealthMixin):
             color=color.orange,
             collider='box',
             scale=(1, 2, 1),
+            name='dummy_target',
             **kwargs
         )
         HealthMixin.__init__(self, health=100)
@@ -566,6 +570,7 @@ class AIBot(DummyTarget):
             position=Vec3(.2, .1, .8),  # adjust for hand offset
             rotation=Vec3(0, 0, 0),
             scale=0.1,
+            name='ai_gun'
         )
 
         self.target_pos = self.get_valid_ground_position()
@@ -674,7 +679,7 @@ class AIBot(DummyTarget):
             return
         
         self._next_fire_time = time.time() + self.fire_interval
-        Audio('assets/gunshot.wav', loop=False, volume=0.2)
+        gunshot.play()
 
         # Raycast toward player
         dir_to_player = (player.position - self.position).normalized()
@@ -687,6 +692,7 @@ class AIBot(DummyTarget):
             position=eye_pos,
             collider='box',
             speed=30,
+            name='ai_bullet'
         )
         bullet.world_parent = scene
         # Make the bullet face the direction to player
@@ -737,7 +743,6 @@ class AIBot(DummyTarget):
         if hit.hit and hit.entity == player:
             print(f"{self} shot the player!")
             player.take_damage(10)
-            Audio('assets/gunshot.wav', loop=False, volume=0.2)
             self._next_fire_time = time.time() + self.fire_interval
     
     def die(self):
@@ -762,12 +767,15 @@ class AIBot(DummyTarget):
 def show_main_menu():
     global main_menu, menu_background
 
+    print("Showing main menu...")
+
     for s in list(Sky.instances):
         destroy(s)
     Sky.instances.clear()
 
     # Create full-screen background image
     menu_background = Entity(
+        name="menu_background",
         parent=camera.ui,
         model='quad',
         texture='assets/label.jpg',
@@ -775,11 +783,12 @@ def show_main_menu():
         z=1  # Send it to back (higher z = farther back in UI)
     )
     
-    main_menu = Entity(parent=camera.ui)
+    main_menu = Entity(name="main_menu", parent=camera.ui)
 
-    Text("Main Menu", scale=2, x=-0.125, y=0.4, parent=main_menu)
+    Text(name="main_menu_title", text="Main Menu", scale=2, x=-0.125, y=0.4, parent=main_menu)
 
     Button(
+        name="btn_singleplayer",
         text='Singleplayer',
         scale=(.3, .1),
         y=0.15,
@@ -788,6 +797,7 @@ def show_main_menu():
     )
 
     Button(
+        name="btn_multiplayer",
         text='Multiplayer',
         scale=(.3, .1),
         y=-0.05,
@@ -796,6 +806,7 @@ def show_main_menu():
     )
 
     Button(
+        name="btn_exit",
         text='Exit',
         scale=(.3, .1),
         y=-0.25,
@@ -805,11 +816,15 @@ def show_main_menu():
 
 def show_pause_menu():
     global pause_menu
-    pause_menu = Entity(parent=camera.ui)
 
-    Text("Paused", scale=2, x=-0.1, y=0.3, parent=pause_menu)
+    print("Showing pause menu...")
+
+    pause_menu = Entity(name="pause_menu", parent=camera.ui)
+
+    Text(name="pause_menu_title", text="Paused", scale=2, x=-0.1, y=0.3, parent=pause_menu)
 
     Button(
+        name="btn_resume",
         text='Resume',
         scale=(.3, .1),
         y=0.1,
@@ -818,6 +833,7 @@ def show_pause_menu():
     )
 
     Button(
+        name="btn_quit_to_menu",
         text='Quit to Menu',
         scale=(.3, .1),
         y=-0.1,
@@ -825,8 +841,24 @@ def show_pause_menu():
         on_click=quit_to_main_menu
     )
 
+    # Hide virtual joysticks, buttons, health bar and crosshair when pause menu is shown
+    if joystick_move:
+        joystick_move.enabled = False
+    if joystick_look:
+        joystick_look.enabled = False
+    if button_jump:
+        button_jump.enabled = False
+    if button_shoot:
+        button_shoot.enabled = False
+    if player and hasattr(player, 'health_bar') and player.health_bar:
+        player.health_bar.enabled = False
+    if player and hasattr(player, 'crosshair') and player.crosshair:
+        player.crosshair.enabled = False
+
 def start_singleplayer():
     global game_started, menu_background, main_menu, player_alive
+
+    print("starting singleplayr...")
 
     application.resume()
 
@@ -857,18 +889,43 @@ def start_singleplayer():
     setup_game()  # existing function that sets up map, player, bots, etc.
 
 def pause_game():
+
+    print("pausing game...")
+
     application.pause()
     pause_button.enabled = False
     show_pause_menu()
 
 def resume_game():
+
+    print("resuming game...")
+
     application.resume()
     destroy(pause_menu)
     pause_button.enabled = True
+    
+    # Re-enable virtual joysticks, buttons, health bar and crosshair when resuming
+    if joystick_move:
+        joystick_move.enabled = True
+    if joystick_look:
+        joystick_look.enabled = True
+    if button_jump:
+        button_jump.enabled = True
+    if button_shoot:
+        button_shoot.enabled = True
+    if player and hasattr(player, 'health_bar') and player.health_bar:
+        player.health_bar.enabled = True
+    if player and hasattr(player, 'crosshair') and player.crosshair:
+        player.crosshair.enabled = True
 
 def quit_to_main_menu():
 
+    print("quiting to main menu....")
+
     def cleanup():
+
+        print("cleaning up the scene...")
+
         global player, bot_tasks, ai_bots, sequences, pause_menu, main_menu, menu_background
 
         # 1) Pause the app to stop new tasks/animations
@@ -884,36 +941,40 @@ def quit_to_main_menu():
 
         # 3) Finish any lingering bot or AI tasks
         for t in list(bot_tasks):
-            if not t:
-                continue
+            # if not t:
+            #     continue
 
-            # If it's a Sequence, just finish it
-            if isinstance(t, Sequence):
-                print(f"Finishing bot Sequence before quitting to main menu: {t}")
-                try:
-                    t.finish()
-                except Exception as e:
-                    print(f"Could not finish Sequence {t}: {e}")
-                continue
+            # # If it's a Sequence, just finish it
+            # if isinstance(t, Sequence):
+            #     print(f"Finishing bot Sequence before quitting to main menu: {t}")
+            #     try:
+            #         t.finish()
+            #     except Exception as e:
+            #         print(f"Could not finish Sequence {t}: {e}")
+            #     continue
 
-            # If it's some other task-like object with .finish
-            if hasattr(t, 'finish'):
-                print(f"Finishing bot task before quitting to main menu: {t}")
-                try:
-                    t.finish()
-                except Exception as e:
-                    print(f"Could not finish bot task {t}: {e}")
+            # # If it's some other task-like object with .finish
+            # if hasattr(t, 'finish'):
+            #     print(f"Finishing bot task before quitting to main menu: {t}")
+            #     try:
+            #         t.finish()
+            #     except Exception as e:
+            #         print(f"Could not finish bot task {t}: {e}")
+            print(f"Finishing bot task before quiting to main menu: {t}")
+            t.finish()
         bot_tasks.clear()
 
         # 4) Destroy every AI bot instance
         for b in list(ai_bots):
-            if not b:
-                continue
-            try:
-                print(f"Destroying AI bot before quitting to main menu: {b}")
-                destroy(b)
-            except Exception as e:
-                print(f"Could not destroy AI bot {b}: {e}")
+            # if not b:
+            #     continue
+            # try:
+            #     print(f"Destroying AI bot before quitting to main menu: {b}")
+            #     destroy(b)
+            # except Exception as e:
+            #     print(f"Could not destroy AI bot {b}: {e}")
+            print(f"Destroying AI bot before quiting to main menu: {b}")
+            destroy(b)
         ai_bots.clear()
 
         # 5) Destroy the player (and its entire sub‐hierarchy)
@@ -924,27 +985,40 @@ def quit_to_main_menu():
 
         # 6) Destroy *every* entity in the main scene
         # (this hits ground, buildings, walls, bullets, etc.)
-        for e in list(scene.entities):
+        lst = list(scene.entities)
+        for e in lst:
             if e:
                 print(f"Destroying scene entity before quiting to main menu: {e}")
                 destroy(e)
+            # print(f"Destroying scene entity before quiting to main menu: {e}")
+            # destroy(e)
 
         # 7) Destroy *every* UI element under camera.ui
-        for e in list(camera.ui.children):
+        lst1 = list(camera.ui.children)
+        for e in lst1:
             if e:
                 print(f"Destroying UI element before quiting to main menu: {e}")
                 destroy(e)
+            # print(f"Destroying UI element before quiting to main menu: {e}")
+            # destroy(e)
 
         # 8) Destroy any remaining sky instances & lights
-        for s in list(Sky.instances):
-            if s and not s.destroyed:
+        lst2 = list(Sky.instances)
+        for s in lst2:
+            # if s and not s.destroyed:
+            #     print(f"Destroying sky instance before quiting to main menu: {s}")
+            #     destroy(s)
+            if s:
                 print(f"Destroying sky instance before quiting to main menu: {s}")
                 destroy(s)
         Sky.instances.clear()
 
         # 9) Teardown menus or background if somehow left
         for ui_root in (main_menu, menu_background, pause_menu):
-            if ui_root and not ui_root.destroyed:
+            # if ui_root and not ui_root.destroyed:
+            #     print(f"Destroying UI root before quiting to main menu: {ui_root}")
+            #     destroy(ui_root)
+            if ui_root:
                 print(f"Destroying UI root before quiting to main menu: {ui_root}")
                 destroy(ui_root)
 
@@ -977,6 +1051,7 @@ def game_over():
             print(f"Could not disable pause_button: {e}")
 
     # cancel all bot‑patrol invokes
+    # for t in bot_tasks:
     for t in list(bot_tasks):
         print(f"Finishing bot task before game over: {t}")
         t.finish()
@@ -984,12 +1059,19 @@ def game_over():
 
     # destroy remaining bots
     for b in ai_bots:
-        if b and not b.destroyed:
-            print(f"Destroying AI bot before game over: {b}")
-            destroy(b)
+        # if b and not b.alive:
+        #     print(f"Destroying AI bot before game over: {b}")
+        #     if hasattr(b, 'children'):
+        #         for child in list(b.children):
+        #             print(f"Destroying child of AI bot before game over: {child}")
+        #             destroy(child)
+        #     destroy(b)
+        print(f"Destroying AI bot before game over: {b}")
+        destroy(b)
     ai_bots.clear()
 
     # cancel all animations
+    # for item in sequences:
     for item in list(sequences):
         print(f"Finishing sequence before game over: {item}")
         if isinstance(item, Sequence):
@@ -998,29 +1080,45 @@ def game_over():
     sequences.clear()
 
     # Destroy all scene entities except the camera and UI
-    for e in list(scene.entities):
-        if e and not e.destroyed:
-            print(f"Destroying scene entity before game over: {e}")
-            destroy(e)
+    # for e in list(scene.entities):
+    #     if isinstance(e, Entity) and hasattr(e, 'alive') and e.alive and not camera:
+    #         print(f"Destroying scene entity before game over: {e}")
+    #         if hasattr(e, 'children'):
+    #             for child in list(e.children):
+    #                 print(f"Destroying child of scene entity before game over: {child}")
+    #                 destroy(child)
+    #         destroy(e)
+    for e in scene.entities:
+        print(f"Destroying scene entity before game over: {e}")
+        destroy(e)
 
     # Clear UI except pause button (optional)
-    for e in list(camera.ui.children):
-        if e and e != pause_button and not e.destroyed:
+    # for e in list(camera.ui.children):
+    #     if (e and e != pause_button and hasattr(e, 'alive') and e.alive):
+    for e in camera.ui.children:
+        if e != pause_button:
             print(f"Destroying UI element before game over: {e}")
+            if hasattr(e, 'children'):
+                for child in list(e.children):
+                    print(f"Destroying child of UI element before game over: {child}")
+                    destroy(child)
             destroy(e)
+
     show_main_menu()
 
 def setup_game():
     global player, pause_button
     global joystick_move, joystick_look, button_jump, button_shoot
 
-    # Instantiate touch controls
-    joystick_move  = VirtualJoystick(position=(-.7, -.3))
-    joystick_look  = VirtualJoystick(position=( .3, -.3))
-    button_jump    = VirtualButton('gamepad a', position=( .6, -.1), color=color.lime)
-    button_shoot   = VirtualButton('gamepad x', position=( .8, -.2), color=color.red)
+    print("setting up game...")
 
-    pause_button = Button(texture='cog', scale=(.08, .08), position=(-0.85, 0.45), origin=(-0.5, 0.5), parent=camera.ui, color=color.gray, on_click=pause_game)
+    # Instantiate touch controls
+    joystick_move  = VirtualJoystick(name="joystick_move", position=(-.7, -.3))
+    joystick_look  = VirtualJoystick(name="joystick_look", position=( .3, -.3))
+    button_jump    = VirtualButton(name="button_jump", input='gamepad a', position=( .6, -.1), color=color.lime)
+    button_shoot   = VirtualButton(name="button_shoot", input='gamepad x', position=( .8, -.2), color=color.red)
+
+    pause_button = Button(name="pause_button", texture='cog', scale=(.08, .08), position=(-0.85, 0.45), origin=(-0.5, 0.5), parent=camera.ui, color=color.gray, on_click=pause_game)
 
     # Touch controls
     joystick_move.enabled = True
@@ -1030,59 +1128,78 @@ def setup_game():
     pause_button.enabled = True
 
     # Add environment
-    ground = Entity(model='cube', scale=(30, 1, 30), color=color.rgb(237/255, 201/255, 175/255), texture='white_cube', texture_scale=(30, 30), collider='box')
+    ground = Entity(name="ground", model='cube', scale=(30, 1, 30), color=color.rgb(237/255, 201/255, 175/255), texture='white_cube', texture_scale=(30, 30), collider='box')
 
-    house1 = Entity(model='assets/building_01.gltf', position=(-4, 0.5, -4), rotation=(0, 0, 0), scale=(1, 1, 1), collider='box')
-    house2 = Entity(model='assets/building_01.gltf', position=( 4, 0.5, -4), rotation=(0, 0, 0), scale=(1, 1, 1), collider='box')
-    house3 = Entity(model='assets/building_01.gltf', position=(-4, 0.5,  4), rotation=(0, 0, 0), scale=(1, 1, 1), collider='box')
-    house4 = Entity(model='assets/building_01.gltf', position=( 4, 0.5,  4), rotation=(0, 0, 0), scale=(1, 1, 1), collider='box')
+    house1 = Entity(name="house1", model='assets/building_01.gltf', position=(-4, 0.5, -4), rotation=(0, 0, 0), scale=(1, 1, 1), collider='box')
+    house2 = Entity(name="house2", model='assets/building_01.gltf', position=( 4, 0.5, -4), rotation=(0, 0, 0), scale=(1, 1, 1), collider='box')
+    house3 = Entity(name="house3", model='assets/building_01.gltf', position=(-4, 0.5,  4), rotation=(0, 0, 0), scale=(1, 1, 1), collider='box')
+    house4 = Entity(name="house4", model='assets/building_01.gltf', position=( 4, 0.5,  4), rotation=(0, 0, 0), scale=(1, 1, 1), collider='box')
 
     # ──────────────── Top Wall (North) ────────────────
-    wall_n1 = Entity(model='assets/wall_03.gltf', position=(-10, 0.5, 15), rotation=(0, 0, 0), scale=1, collider='box')
-    wall_n2 = Entity(model='assets/wall_03.gltf', position=(  0, 0.5, 15), rotation=(0, 0, 0), scale=1, collider='box')
-    wall_n3 = Entity(model='assets/wall_03.gltf', position=( 10, 0.5, 15), rotation=(0, 0, 0), scale=1, collider='box')
+    wall_n1 = Entity(name="wall_n1", model='assets/wall_03.gltf', position=(-10, 0.5, 15), rotation=(0, 0, 0), scale=1, collider='box')
+    wall_n2 = Entity(name="wall_n2", model='assets/wall_03.gltf', position=(  0, 0.5, 15), rotation=(0, 0, 0), scale=1, collider='box')
+    wall_n3 = Entity(name="wall_n3", model='assets/wall_03.gltf', position=( 10, 0.5, 15), rotation=(0, 0, 0), scale=1, collider='box')
 
     # ──────────────── Bottom Wall (South) ────────────────
-    wall_s1 = Entity(model='assets/wall_03.gltf', position=(-10, 0.5, -15), rotation=(0, 0, 0), scale=1, collider='box')
-    wall_s2 = Entity(model='assets/wall_03.gltf', position=(  0, 0.5, -15), rotation=(0, 0, 0), scale=1, collider='box')
-    wall_s3 = Entity(model='assets/wall_03.gltf', position=( 10, 0.5, -15), rotation=(0, 0, 0), scale=1, collider='box')
+    wall_s1 = Entity(name="wall_s1", model='assets/wall_03.gltf', position=(-10, 0.5, -15), rotation=(0, 0, 0), scale=1, collider='box')
+    wall_s2 = Entity(name="wall_s2", model='assets/wall_03.gltf', position=(  0, 0.5, -15), rotation=(0, 0, 0), scale=1, collider='box')
+    wall_s3 = Entity(name="wall_s3", model='assets/wall_03.gltf', position=( 10, 0.5, -15), rotation=(0, 0, 0), scale=1, collider='box')
 
     # ──────────────── Left Wall (West) ────────────────
-    wall_w1 = Entity(model='assets/wall_03.gltf', position=(-15, 0.5, -10), rotation=(0, 90, 0), scale=1, collider='box')
-    wall_w2 = Entity(model='assets/wall_03.gltf', position=(-15, 0.5,   0), rotation=(0, 90, 0), scale=1, collider='box')
-    wall_w3 = Entity(model='assets/wall_03.gltf', position=(-15, 0.5,  10), rotation=(0, 90, 0), scale=1, collider='box')
+    wall_w1 = Entity(name="wall_w1", model='assets/wall_03.gltf', position=(-15, 0.5, -10), rotation=(0, 90, 0), scale=1, collider='box')
+    wall_w2 = Entity(name="wall_w2", model='assets/wall_03.gltf', position=(-15, 0.5,   0), rotation=(0, 90, 0), scale=1, collider='box')
+    wall_w3 = Entity(name="wall_w3", model='assets/wall_03.gltf', position=(-15, 0.5,  10), rotation=(0, 90, 0), scale=1, collider='box')
 
     # ──────────────── Right Wall (East) ────────────────
-    wall_e1 = Entity(model='assets/wall_03.gltf', position=(15, 0.5, -10), rotation=(0, 90, 0), scale=1, collider='box')
-    wall_e2 = Entity(model='assets/wall_03.gltf', position=(15, 0.5,   0), rotation=(0, 90, 0), scale=1, collider='box')
-    wall_e3 = Entity(model='assets/wall_03.gltf', position=(15, 0.5,  10), rotation=(0, 90, 0), scale=1, collider='box')
+    wall_e1 = Entity(name="wall_e1", model='assets/wall_03.gltf', position=(15, 0.5, -10), rotation=(0, 90, 0), scale=1, collider='box')
+    wall_e2 = Entity(name="wall_e2", model='assets/wall_03.gltf', position=(15, 0.5,   0), rotation=(0, 90, 0), scale=1, collider='box')
+    wall_e3 = Entity(name="wall_e3", model='assets/wall_03.gltf', position=(15, 0.5,  10), rotation=(0, 90, 0), scale=1, collider='box')
 
     # ──────────────── North Flank Walls (between top wall and top houses) ────────────────
-    north_fw1 = Entity(model='assets/wall_01.gltf', position=(-6, 0.5, 10), rotation=(0, 0, 0), scale=1, collider='box')
-    north_fw2 = Entity(model='assets/wall_01.gltf', position=( 0, 0.5, 11), rotation=(0, 0, 0), scale=1, collider='box')  # middle slightly forward
-    north_fw3 = Entity(model='assets/wall_01.gltf', position=( 6, 0.5, 10), rotation=(0, 0, 0), scale=1, collider='box')
+    north_fw1 = Entity(name="north_fw1", model='assets/wall_01.gltf', position=(-6, 0.5, 10), rotation=(0, 0, 0), scale=1, collider='box')
+    north_fw2 = Entity(name="north_fw2", model='assets/wall_01.gltf', position=( 0, 0.5, 11), rotation=(0, 0, 0), scale=1, collider='box')  # middle slightly forward
+    north_fw3 = Entity(name="north_fw3", model='assets/wall_01.gltf', position=( 6, 0.5, 10), rotation=(0, 0, 0), scale=1, collider='box')
 
     # ──────────────── South Flank Walls (between bottom wall and bottom houses) ────────────────
-    south_fw1 = Entity(model='assets/wall_01.gltf', position=(-6, 0.5, -10), rotation=(0, 0, 0), scale=1, collider='box')
-    south_fw2 = Entity(model='assets/wall_01.gltf', position=( 0, 0.5, -11), rotation=(0, 0, 0), scale=1, collider='box')  # middle forward
-    south_fw3 = Entity(model='assets/wall_01.gltf', position=( 6, 0.5, -10), rotation=(0, 0, 0), scale=1, collider='box')
+    south_fw1 = Entity(name="south_fw1", model='assets/wall_01.gltf', position=(-6, 0.5, -10), rotation=(0, 0, 0), scale=1, collider='box')
+    south_fw2 = Entity(name="south_fw2", model='assets/wall_01.gltf', position=( 0, 0.5, -11), rotation=(0, 0, 0), scale=1, collider='box')  # middle forward
+    south_fw3 = Entity(name="south_fw3", model='assets/wall_01.gltf', position=( 6, 0.5, -10), rotation=(0, 0, 0), scale=1, collider='box')
 
     # ──────────────── West Flank Walls (between left wall and left houses) ────────────────
-    west_fw1 = Entity(model='assets/wall_01.gltf', position=(-10, 0.5, -6), rotation=(0, 90, 0), scale=1, collider='box')
-    west_fw2 = Entity(model='assets/wall_01.gltf', position=(-11, 0.5,  0), rotation=(0, 90, 0), scale=1, collider='box')  # middle pushed left
-    west_fw3 = Entity(model='assets/wall_01.gltf', position=(-10, 0.5,  6), rotation=(0, 90, 0), scale=1, collider='box')
+    west_fw1 = Entity(name="west_fw1", model='assets/wall_01.gltf', position=(-10, 0.5, -6), rotation=(0, 90, 0), scale=1, collider='box')
+    west_fw2 = Entity(name="west_fw2", model='assets/wall_01.gltf', position=(-11, 0.5,  0), rotation=(0, 90, 0), scale=1, collider='box')  # middle pushed left
+    west_fw3 = Entity(name="west_fw3", model='assets/wall_01.gltf', position=(-10, 0.5,  6), rotation=(0, 90, 0), scale=1, collider='box')
 
     # ──────────────── East Flank Walls (between right wall and right houses) ────────────────
-    east_fw1 = Entity(model='assets/wall_01.gltf', position=(10, 0.5, -6), rotation=(0, 90, 0), scale=1, collider='box')
-    east_fw2 = Entity(model='assets/wall_01.gltf', position=(11, 0.5,  0), rotation=(0, 90, 0), scale=1, collider='box')  # middle pushed right
-    east_fw3 = Entity(model='assets/wall_01.gltf', position=(10, 0.5,  6), rotation=(0, 90, 0), scale=1, collider='box')
+    east_fw1 = Entity(name="east_fw1", model='assets/wall_01.gltf', position=(10, 0.5, -6), rotation=(0, 90, 0), scale=1, collider='box')
+    east_fw2 = Entity(name="east_fw2", model='assets/wall_01.gltf', position=(11, 0.5,  0), rotation=(0, 90, 0), scale=1, collider='box')  # middle pushed right
+    east_fw3 = Entity(name="east_fw3", model='assets/wall_01.gltf', position=(10, 0.5,  6), rotation=(0, 90, 0), scale=1, collider='box')
 
     # Player and gun setup
     player = FirstPersonController(y=2, origin_y=-.5)
-    player.health_bar = HealthBar(max_value=100, value=100, bar_color=color.green.tint(-.2), scale=(.4, .03), position=(-.5, .45), roundness=.5, show_text=True, parent=camera.ui)
+    player.health_bar = HealthBar(
+        name="health_bar", 
+        max_value=100, 
+        value=100, 
+        bar_color=color.green.tint(-.2), 
+        scale=(.4, .03), 
+        position=(-.5, .45), 
+        roundness=.5, 
+        show_text=True, 
+        parent=camera.ui
+    )
 
     # Gun pickup
-    gun = Button(parent=scene, model='assets/pistol.gltf', position=(1, 1, 1), collider='box', scale=0.1, color=color.gray.tint(-.2))
+    gun = Button(
+        name="gun_pickup", 
+        parent=scene, 
+        model='assets/pistol.gltf', 
+        position=(1, 1, 1), 
+        collider='box', 
+        scale=0.1, 
+        color=color.gray.tint(-.2)
+    )
+
     gun.on_click = lambda: (
         setattr(gun, 'parent', camera),
         setattr(gun, 'position', Vec3(0.2, -0.2, 2)),
