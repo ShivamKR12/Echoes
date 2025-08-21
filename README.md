@@ -1,3 +1,5 @@
+[![Build Ursina APK](https://github.com/ShivamKR12/Echoes/actions/workflows/build-apk.yml/badge.svg)](https://github.com/ShivamKR12/Echoes/actions/workflows/build-apk.yml)
+
 # Echoes: Ursina for Android
 
 Welcome to **Echoes**, a proof-of-concept game demonstrating how to use Panda3D/Ursina to build games for Android devices.

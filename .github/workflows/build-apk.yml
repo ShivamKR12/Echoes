@@ -12,52 +12,62 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Checkout the repository first
+      # 1) Checkout repository (full history)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # required for git log comparison
-          ref: main  # make sure you are on main branch
+          fetch-depth: 0  # full history required for git log
+          ref: main
 
-      # Check if there are new commits compared to remote main
+      # 2) Export event name so PowerShell can use it
+      - name: Export event name
+        run: echo "GITHUB_EVENT_NAME=${{ github.event_name }}" >> $GITHUB_ENV
+        shell: bash
+
+      # 3) Check for commits in last 24 hours (for schedule) or force build for push
       - name: Check for changes
         id: check_changes
+        env:
+          # event name is set above in GITHUB_ENV and available here
         run: |
-          # For scheduled runs, check commits in last 24 hours
+          # Use PowerShell on Windows runners
           if ($env:GITHUB_EVENT_NAME -eq "schedule") {
-            $changes = git log --since="24 hours ago" --oneline
+            # list commits on origin/main in the last 24 hours
+            $changes = git log origin/main --since="24 hours ago" --oneline
           } else {
-            # For push events, force build
+            # push triggers => build
             $changes = "force_build"
           }
 
-          if ($changes) {
+          if ($null -ne $changes -and $changes.Trim().Length -gt 0) {
             echo "CHANGES_FOUND=true" >> $env:GITHUB_ENV
           } else {
             echo "CHANGES_FOUND=false" >> $env:GITHUB_ENV
           }
         shell: pwsh
-      
-      # Stop early if no changes
+
+      # 4) Exit early if no changes
       - name: Stop if no changes
         if: env.CHANGES_FOUND == 'false'
-        run: echo "No changes in last 24 hours. Skipping build." && exit 0
+        run: |
+          echo "No commits in the last 24 hours; skipping build."
+          exit 0
+        shell: bash
 
-      # Set up Python 3.8
+      # 5) Setup Python
       - name: Set up Python 3.8
         uses: actions/setup-python@v5
         with:
           python-version: '3.8'
 
-      # Set up Java (required for keytool and BundleTool)
+      # 6) Setup Java
       - name: Set up JDK 11
-        if: env.CHANGES_FOUND == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '11'
 
-      # Install Python dependencies
+      # 7) Install Python deps
       - name: Install Python dependencies
         run: |
           cd src
@@ -65,14 +75,16 @@ jobs:
           pip install -r requirements.txt
           python -m pip install protobuf==3.20.0
           python -m pip install https://buildbot.panda3d.org/downloads/68f0931f43284345893a90d5bba9ba5df8aa53bb/panda3d-1.11.0.dev2480-cp38-cp38-win_amd64.whl
+        shell: bash
 
-      # Build the Android App Bundle (AAB)
+      # 8) Build AAB
       - name: Build AAB
         run: |
           cd src
           python setup.py bdist_apps
+        shell: bash
 
-      # Generate signing key
+      # 9) Generate signing key
       - name: Generate signing key
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -80,13 +92,15 @@ jobs:
         run: |
           cd src
           keytool -genkeypair -alias Echoes-key -keyalg RSA -keysize 2048 -validity 10000 -keystore Echoes.keystore -storepass "$env:KEYSTORE_PASSWORD" -keypass "$env:KEY_PASSWORD" -dname "CN=Your Name, OU=YourUnit, O=YourOrg, L=YourCity, ST=YourState, C=YourCountry"
+        shell: bash
 
-      # Download BundleTool
+      # 10) Download BundleTool
       - name: Download BundleTool
         run: |
           curl -L -o bundletool.jar https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
+        shell: bash
 
-      # Convert AAB to APKS
+      # 11) Convert AAB to APKS
       - name: Convert AAB to APKS
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -94,19 +108,21 @@ jobs:
         run: |
           cd src
           java -jar ..\bundletool.jar build-apks --bundle dist\Echoes-1.0.0_android.aab --output dist\Echoes.apks --ks Echoes.keystore --ks-pass pass:$env:KEYSTORE_PASSWORD --ks-key-alias Echoes-key --key-pass pass:$env:KEY_PASSWORD --mode universal --verbose
+        shell: bash
 
-      # Extract APK from APKS
+      # 12) Extract APK
       - name: Extract APK
         run: |
           cd src\dist
           New-Item -ItemType Directory -Path "Echoes_extracted" -Force
           Rename-Item -Path "Echoes.apks" -NewName "Echoes.zip"
           Expand-Archive -LiteralPath "Echoes.zip" -DestinationPath "Echoes_extracted" -Force
+        shell: pwsh
 
-      # Upload APK as artifact
+      # 13) Upload APK artifact (wildcard to be robust to name)
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Echoes-apk
-          path: src/dist/Echoes_extracted/universal.apk
+          path: src/dist/Echoes_extracted/**/*.apk
           retention-days: 7
