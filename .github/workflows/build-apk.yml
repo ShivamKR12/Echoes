@@ -27,8 +27,6 @@ jobs:
       # 3) Check for commits in last 24 hours (for schedule) or force build for push
       - name: Check for changes
         id: check_changes
-        env:
-          # event name is set above in GITHUB_ENV and available here
         run: |
           # Use PowerShell on Windows runners
           if ($env:GITHUB_EVENT_NAME -eq "schedule") {
