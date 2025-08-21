@@ -17,18 +17,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # required for git log comparison
+          ref: main  # make sure you are on main branch
 
       # Check if there are new commits compared to remote main
       - name: Check for changes
         id: check_changes
         run: |
-          git fetch origin
-          
-          # For schedule runs: check commits from last 24 hours
-          if ("${{ github.event_name }}" -eq "schedule") {
+          # For scheduled runs, check commits in last 24 hours
+          if ($env:GITHUB_EVENT_NAME -eq "schedule") {
             $changes = git log --since="24 hours ago" --oneline
           } else {
-            # For push events, just set true (since push triggered)
+            # For push events, force build
             $changes = "force_build"
           }
 
