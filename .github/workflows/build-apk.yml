@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main # Also trigger on push to main for testing
+  workflow_dispatch: 
 
 jobs:
   build-apk:
@@ -22,7 +23,7 @@ jobs:
       # 2) Export event name so PowerShell can use it
       - name: Export event name
         run: echo "GITHUB_EVENT_NAME=${{ github.event_name }}" >> $GITHUB_ENV
-        shell: bash
+        shell: pwsh
 
       # 3) Check for commits in last 24 hours (for schedule) or force build for push
       - name: Check for changes
@@ -50,7 +51,7 @@ jobs:
         run: |
           echo "No commits in the last 24 hours; skipping build."
           exit 0
-        shell: bash
+        shell: pwsh
 
       # 5) Setup Python
       - name: Set up Python 3.8
@@ -73,14 +74,14 @@ jobs:
           pip install -r requirements.txt
           python -m pip install protobuf==3.20.0
           python -m pip install https://buildbot.panda3d.org/downloads/68f0931f43284345893a90d5bba9ba5df8aa53bb/panda3d-1.11.0.dev2480-cp38-cp38-win_amd64.whl
-        shell: bash
+        shell: pwsh
 
       # 8) Build AAB
       - name: Build AAB
         run: |
           cd src
           python setup.py bdist_apps
-        shell: bash
+        shell: pwsh
 
       # 9) Generate signing key
       - name: Generate signing key
@@ -89,14 +90,14 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           cd src
-          keytool -genkeypair -alias Echoes-key -keyalg RSA -keysize 2048 -validity 10000 -keystore Echoes.keystore -storepass "$env:KEYSTORE_PASSWORD" -keypass "$env:KEY_PASSWORD" -dname "CN=Your Name, OU=YourUnit, O=YourOrg, L=YourCity, ST=YourState, C=YourCountry"
-        shell: bash
+          keytool -genkeypair -alias Echoes-key -keyalg RSA -keysize 2048 -validity 10000 -keystore Echoes.keystore -storepass $env:KEYSTORE_PASSWORD -keypass $env:KEY_PASSWORD -dname "CN=Your Name, OU=YourUnit, O=YourOrg, L=YourCity, ST=YourState, C=YourCountry"
+        shell: pwsh
 
       # 10) Download BundleTool
       - name: Download BundleTool
         run: |
           curl -L -o bundletool.jar https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
-        shell: bash
+        shell: pwsh
 
       # 11) Convert AAB to APKS
       - name: Convert AAB to APKS
@@ -106,7 +107,7 @@ jobs:
         run: |
           cd src
           java -jar ..\bundletool.jar build-apks --bundle dist\Echoes-1.0.0_android.aab --output dist\Echoes.apks --ks Echoes.keystore --ks-pass pass:$env:KEYSTORE_PASSWORD --ks-key-alias Echoes-key --key-pass pass:$env:KEY_PASSWORD --mode universal --verbose
-        shell: bash
+        shell: pwsh
 
       # 12) Extract APK
       - name: Extract APK
