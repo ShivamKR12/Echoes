@@ -12,27 +12,40 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # Check if there are new commits
+      # Checkout the repository first
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required for git log comparison
+
+      # Check if there are new commits compared to remote main
       - name: Check for changes
         id: check_changes
         run: |
           git fetch origin
-          $changes = git diff origin/main --name-only
+          
+          # For schedule runs: check commits from last 24 hours
+          if ("${{ github.event_name }}" -eq "schedule") {
+            $changes = git log --since="24 hours ago" --oneline
+          } else {
+            # For push events, just set true (since push triggered)
+            $changes = "force_build"
+          }
+
           if ($changes) {
             echo "CHANGES_FOUND=true" >> $env:GITHUB_ENV
           } else {
             echo "CHANGES_FOUND=false" >> $env:GITHUB_ENV
           }
         shell: pwsh
-
-      # Checkout the repository
-      - name: Checkout repository
-        if: env.CHANGES_FOUND == 'true'
-        uses: actions/checkout@v4
+      
+      # Stop early if no changes
+      - name: Stop if no changes
+        if: env.CHANGES_FOUND == 'false'
+        run: echo "No changes in last 24 hours. Skipping build." && exit 0
 
       # Set up Python 3.8
       - name: Set up Python 3.8
-        if: env.CHANGES_FOUND == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.8'
@@ -47,7 +60,6 @@ jobs:
 
       # Install Python dependencies
       - name: Install Python dependencies
-        if: env.CHANGES_FOUND == 'true'
         run: |
           cd src
           python -m pip install --upgrade pip
@@ -57,14 +69,12 @@ jobs:
 
       # Build the Android App Bundle (AAB)
       - name: Build AAB
-        if: env.CHANGES_FOUND == 'true'
         run: |
           cd src
           python setup.py bdist_apps
 
       # Generate signing key
       - name: Generate signing key
-        if: env.CHANGES_FOUND == 'true'
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -74,13 +84,11 @@ jobs:
 
       # Download BundleTool
       - name: Download BundleTool
-        if: env.CHANGES_FOUND == 'true'
         run: |
           curl -L -o bundletool.jar https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
 
       # Convert AAB to APKS
       - name: Convert AAB to APKS
-        if: env.CHANGES_FOUND == 'true'
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -90,7 +98,6 @@ jobs:
 
       # Extract APK from APKS
       - name: Extract APK
-        if: env.CHANGES_FOUND == 'true'
         run: |
           cd src\dist
           New-Item -ItemType Directory -Path "Echoes_extracted" -Force
@@ -99,7 +106,6 @@ jobs:
 
       # Upload APK as artifact
       - name: Upload APK
-        if: env.CHANGES_FOUND == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Echoes-apk

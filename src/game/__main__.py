@@ -7,7 +7,7 @@ from ursina.prefabs.draggable import Draggable
 from ursina.prefabs.health_bar import HealthBar
 from ursina.prefabs.slider import Slider
 from ursina.sequence import Sequence
-# from ursina.ursinamath import lerp
+from ursina.ursinamath import lerp
 import math
 import random
 
@@ -193,58 +193,58 @@ class HealthMixin:
         print(f'{self} died.')
         destroy(self)
 
-# class DynamicCrosshair(Entity):
-#     def __init__(self, player=None, line_length=0.03, line_thickness=0.002,
-#                  reticle_speed=5, reticle_distance=0.02, dot_scale=0.01, **kwargs):
-#         super().__init__(parent=camera.ui, position=(0,0))
+class DynamicCrosshair(Entity):
+    def __init__(self, player=None, line_length=0.03, line_thickness=0.002,
+                 reticle_speed=5, reticle_distance=0.02, dot_scale=0.01, **kwargs):
+        super().__init__(parent=camera.ui, position=(0,0))
         
-#         self.player = player  # reference to player entity
-#         self.reticle_speed = reticle_speed
-#         self.reticle_distance = reticle_distance
+        self.player = player  # reference to player entity
+        self.reticle_speed = reticle_speed
+        self.reticle_distance = reticle_distance
 
-#         # Shooting offset
-#         self.shoot_offset = 0
+        # Shooting offset
+        self.shoot_offset = 0
 
-#         # Center dot
-#         self.dot = Entity(parent=self, model='circle', color=color.white, scale=dot_scale, position=(0,0), name='crosshair_dot')
+        # Center dot
+        self.dot = Entity(parent=self, model='circle', color=color.white, scale=dot_scale, position=(0,0), name='crosshair_dot')
 
-#         # Create crosshair lines
-#         self.lines = {}
-#         self.lines['top'] = Entity(parent=self, model='quad', color=color.white,
-#                                    scale=(line_thickness, line_length), position=(0, line_length/2 + 0.01), name='crosshair_top')
-#         self.lines['bottom'] = Entity(parent=self, model='quad', color=color.white,
-#                                       scale=(line_thickness, line_length), position=(0, -line_length/2 - 0.01), name='crosshair_bottom')
-#         self.lines['left'] = Entity(parent=self, model='quad', color=color.white,
-#                                     scale=(line_length, line_thickness), position=(-line_length/2 - 0.01, 0), name='crosshair_left')
-#         self.lines['right'] = Entity(parent=self, model='quad', color=color.white,
-#                                      scale=(line_length, line_thickness), position=(line_length/2 + 0.01, 0), name='crosshair_right')
+        # Create crosshair lines
+        self.lines = {}
+        self.lines['top'] = Entity(parent=self, model='quad', color=color.white,
+                                   scale=(line_thickness, line_length), position=(0, line_length/2 + 0.01), name='crosshair_top')
+        self.lines['bottom'] = Entity(parent=self, model='quad', color=color.white,
+                                      scale=(line_thickness, line_length), position=(0, -line_length/2 - 0.01), name='crosshair_bottom')
+        self.lines['left'] = Entity(parent=self, model='quad', color=color.white,
+                                    scale=(line_length, line_thickness), position=(-line_length/2 - 0.01, 0), name='crosshair_left')
+        self.lines['right'] = Entity(parent=self, model='quad', color=color.white,
+                                     scale=(line_length, line_thickness), position=(line_length/2 + 0.01, 0), name='crosshair_right')
         
-#         # Store original positions for interpolation
-#         self.original_positions = {k: v.position for k,v in self.lines.items()}
+        # Store original positions for interpolation
+        self.original_positions = {k: v.position for k,v in self.lines.items()}
 
-#     def update(self):
-#         # Player speed
-#         speed = getattr(self.player, 'velocity', Vec3(0,0,0)).length() if self.player else 1
+    def update(self):
+        # Player speed
+        speed = getattr(self.player, 'velocity', Vec3(0,0,0)).length() if self.player else 1
 
-#         # Total offset = movement + shooting
-#         total_offset = speed * self.reticle_distance + self.shoot_offset
+        # Total offset = movement + shooting
+        total_offset = speed * self.reticle_distance + self.shoot_offset
 
-#         for direction, line in self.lines.items():
-#             x, y = 0, 0
-#             if direction == 'top':
-#                 y = self.original_positions['top'].y + total_offset
-#             elif direction == 'bottom':
-#                 y = self.original_positions['bottom'].y - total_offset
-#             elif direction == 'left':
-#                 x = self.original_positions['left'].x - total_offset
-#             elif direction == 'right':
-#                 x = self.original_positions['right'].x + total_offset
+        for direction, line in self.lines.items():
+            x, y = 0, 0
+            if direction == 'top':
+                y = self.original_positions['top'].y + total_offset
+            elif direction == 'bottom':
+                y = self.original_positions['bottom'].y - total_offset
+            elif direction == 'left':
+                x = self.original_positions['left'].x - total_offset
+            elif direction == 'right':
+                x = self.original_positions['right'].x + total_offset
 
-#             # Smoothly interpolate
-#             line.position = lerp(line.position, Vec3(x, y, 0), time.dt * self.reticle_speed)
+            # Smoothly interpolate
+            line.position = lerp(line.position, Vec3(x, y, 0), time.dt * self.reticle_speed)
 
-#         # Gradually decay shooting offset
-#         self.shoot_offset = lerp(self.shoot_offset, 0, time.dt * 10)
+        # Gradually decay shooting offset
+        self.shoot_offset = lerp(self.shoot_offset, 0, time.dt * 10)
 
 class FirstPersonController(Entity, HealthMixin):
     """
@@ -292,13 +292,13 @@ class FirstPersonController(Entity, HealthMixin):
         # self.headbob_timer = 0.0        # Internal timer for sine wave
         # self.camera_original_pos = camera.position
 
-        # self.recoil_pitch = 0.0          # Current vertical recoil offset
-        # self.recoil_yaw = 0.0            # Optional horizontal sway
-        # self.recoil_recover_speed = 5.0  # How fast camera recovers from recoil
-        # self.recoil_amount = Vec2(0.5, 0.1)  # (pitch, yaw) per shot
+        self.recoil_pitch = 0.0          # Current vertical recoil offset
+        self.recoil_yaw = 0.0            # Optional horizontal sway
+        self.recoil_recover_speed = 5.0  # How fast camera recovers from recoil
+        self.recoil_amount = Vec2(0.5, 0.1)  # (pitch, yaw) per shot
 
-        # # Create dynamic crosshair, passing self as the player reference
-        # self.crosshair = DynamicCrosshair(player=self)
+        # Create dynamic crosshair, passing self as the player reference
+        self.crosshair = DynamicCrosshair(player=self)
 
         # Apply any overrides passed in
         for key, value in kwargs.items():
@@ -331,7 +331,7 @@ class FirstPersonController(Entity, HealthMixin):
         # 2) Move via left joystick
         move      = joystick_move.value
         direction = Vec3(self.forward * move.y + self.right * move.x).normalized()
-        # self.velocity = direction * self.speed  # Store velocity vector
+        self.velocity = direction * self.speed  # Store velocity vector
 
         if direction:
             # Prevent walking through walls
@@ -388,17 +388,20 @@ class FirstPersonController(Entity, HealthMixin):
         #     # Smoothly return camera to original position
         #     camera.position = lerp(camera.position, self.camera_original_pos, time.dt * 8)
         
-        # self._prev_position = self.position
+        self._prev_position = self.position
 
-        # # Apply recoil recovery
-        # if self.recoil_pitch != 0 or self.recoil_yaw != 0:
-        #     # Gradually return to zero
-        #     self.recoil_pitch = lerp(self.recoil_pitch, 0, time.dt * self.recoil_recover_speed)
-        #     self.recoil_yaw   = lerp(self.recoil_yaw, 0, time.dt * self.recoil_recover_speed)
+        # Apply recoil recovery
+        if self.recoil_pitch != 0 or self.recoil_yaw != 0:
+            # Gradually return to zero
+            self.recoil_pitch = lerp(self.recoil_pitch, 0, time.dt * self.recoil_recover_speed)
+            self.recoil_yaw   = lerp(self.recoil_yaw, 0, time.dt * self.recoil_recover_speed)
 
-        #     # Apply recoil offsets to camera pivot
-        #     self.camera_pivot.rotation_x -= self.recoil_pitch
-        #     self.rotation_y       += self.recoil_yaw
+            # # Apply recoil offsets to camera pivot
+            # self.camera_pivot.rotation_x -= self.recoil_pitch
+            # self.rotation_y       += self.recoil_yaw
+        
+        # Smoothly adjust crosshair spread based on recoil
+        self.crosshair.shoot_offset = self.recoil_pitch * 0.05
 
     def input(self, key: str) -> None:
         # Toggle touch controls
@@ -457,8 +460,8 @@ class FirstPersonController(Entity, HealthMixin):
         self._next_fire_time = time.time() + 0.25  # 0.25s cooldown
         gunshot.play()
         self.gun.blink(color.gray)
-        # self.recoil_pitch += self.recoil_amount.x
-        # self.recoil_yaw   += random.uniform(-self.recoil_amount.y, self.recoil_amount.y)
+        self.recoil_pitch += self.recoil_amount.x
+        self.recoil_yaw   += random.uniform(-self.recoil_amount.y, self.recoil_amount.y)
         # Raycast for hit detection
         hit = raycast(
             camera.world_position,
@@ -487,8 +490,6 @@ class FirstPersonController(Entity, HealthMixin):
             target = hit.entity
             if hasattr(target, 'take_damage'):
                 target.take_damage(50)
-        
-        # self.crosshair.shoot_offset = 0.03  # Temporarily increase
 
     def take_damage(self, amount):
         super().take_damage(amount)
@@ -708,6 +709,10 @@ class AIBot(DummyTarget):
             if not player or not hasattr(player, 'position') or player in scene.entities and player.enabled == False:
                 destroy(b)
                 return
+            # Check if AI (self) still exists and is enabled
+            if not self or not hasattr(self, 'position') or not self.enabled:
+                destroy(b)
+                return
             # Raycast ahead of the bullet's current path
             hit_info = raycast(
                 origin=b.position,
@@ -726,12 +731,18 @@ class AIBot(DummyTarget):
                 destroy(b)
                 return
             b.position += b.forward * b.speed * time.dt
-            if distance(b.position, player.position) < 1.0:
+
+            # Check bullet proximity to player safely
+            if player and hasattr(player, 'position') and distance(b.position, player.position) < 1.0:
                 if hasattr(player, 'take_damage'):
                     player.take_damage(10)
                 destroy(b)
-            elif distance(b.position, self.position) > 50:
+                return
+
+            # Check if bullet is too far from AI
+            if self and hasattr(self, 'position') and distance(b.position, self.position) > 50:
                 destroy(b)
+                return
 
         bullet.update = bullet_update
 
@@ -830,24 +841,16 @@ def show_pause_menu():
         name="btn_resume",
         text='Resume',
         scale=(.3, .1),
-        y=0.2,
+        y=0.1,
         parent=pause_menu,
         on_click=resume_game
     )
-
-    # Button(
-    #     text='Settings',
-    #     scale=(.3, .1),
-    #     y=0.0,
-    #     parent=pause_menu,
-    #     on_click=show_settings_menu
-    # )
 
     Button(
         name="btn_quit_to_menu",
         text='Quit to Menu',
         scale=(.3, .1),
-        y=-0.2,
+        y=-0.1,
         parent=pause_menu,
         on_click=quit_to_main_menu
     )
@@ -1260,7 +1263,7 @@ def update():
     if mouse.left and isinstance(mouse.hovered_entity, Button):
         return
     
-    print("mouse.hovered_entity :", mouse.hovered_entity)
+    # print("mouse.hovered_entity :", mouse.hovered_entity)
 
 show_main_menu()
 app.run()
