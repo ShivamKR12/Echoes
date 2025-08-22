@@ -5,7 +5,7 @@ on:
     - cron: '0 0 * * *' # Run daily at midnight UTC
   push:
     branches:
-      - main # Also trigger on push to main for testing
+      - master # Also trigger on push to main for testing
   workflow_dispatch: 
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # full history required for git log
-          ref: main
+          ref: master
 
       # 2) Export event name so PowerShell can use it
       - name: Export event name
