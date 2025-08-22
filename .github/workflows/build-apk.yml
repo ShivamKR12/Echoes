@@ -131,8 +131,16 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ github.run_number }}
-          release_name: Echoes v${{ github.run_number }}
+          name: Echoes v${{ github.run_number }}
           body: "Download the latest APK of Echoes"
-          files: src/dist/Echoes_extracted/**/*.apk
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: src/dist/Echoes_extracted/**/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
