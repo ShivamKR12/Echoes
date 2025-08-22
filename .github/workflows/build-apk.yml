@@ -148,6 +148,7 @@ jobs:
           name: Echoes v${{ github.run_number }}
           body: "Download the latest APK of Echoes"
           token: ${{ secrets.PAT_TOKEN }}
+          allowUpdates: true
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v1
