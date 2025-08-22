@@ -1,5 +1,8 @@
 [![Build Ursina APK](https://github.com/ShivamKR12/Echoes/actions/workflows/build-apk.yml/badge.svg)](https://github.com/ShivamKR12/Echoes/actions/workflows/build-apk.yml)
 [![Download APK](https://img.shields.io/badge/Download-APK-brightgreen)](https://github.com/ShivamKR12/Echoes/releases/latest/download/universal.apk)
+[![Latest Release](https://img.shields.io/github/v/release/ShivamKR12/Echoes)](https://github.com/ShivamKR12/Echoes/releases/latest)
+[![License](https://img.shields.io/github/license/ShivamKR12/Echoes.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/ShivamKR12/Echoes.svg)](https://github.com/ShivamKR12/Echoes/stargazers)
 
 # Echoes: Ursina for Android
 
