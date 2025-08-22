@@ -135,12 +135,13 @@ jobs:
           body: "Download the latest APK of Echoes"
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          generateReleaseNotes: false
+          makeLatest: legacy
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v1
         with:
           files: src/dist/Echoes_extracted/**/*.apk
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
