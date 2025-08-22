@@ -140,6 +140,11 @@ jobs:
           git tag v${{ github.run_number }}
           git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} v${{ github.run_number }}
 
+      - name: Checkout the Tag
+        run: |
+          git fetch --tags
+          git checkout v${{ github.run_number }}
+          
       # 14) Upload APK to GitHub Release
       - name: Create Release
         uses: ncipollo/release-action@v1
