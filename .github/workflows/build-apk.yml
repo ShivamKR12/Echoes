@@ -125,3 +125,14 @@ jobs:
           name: Echoes-apk
           path: src/dist/Echoes_extracted/**/*.apk
           retention-days: 7
+      
+      # 14) Upload APK to GitHub Release
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ github.run_number }}
+          release_name: Echoes v${{ github.run_number }}
+          body: "Download the latest APK of Echoes"
+          files: src/dist/Echoes_extracted/**/*.apk
+          draft: false
+          prerelease: false
