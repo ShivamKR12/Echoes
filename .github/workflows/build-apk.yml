@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - master # Also trigger on push to main for testing
+    tags:
+      - 'v*'   # trigger on any tag starting with v
   workflow_dispatch: 
 
 jobs:
@@ -144,9 +146,9 @@ jobs:
         run: |
           git fetch --tags
           git checkout v${{ github.run_number }}
-          
+
       # 14) Upload APK to GitHub Release
-      - name: Create Release
+      - name: Create Release and upload APK
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ github.run_number }}
@@ -154,10 +156,4 @@ jobs:
           body: "Download the latest APK of Echoes"
           token: ${{ secrets.PAT_TOKEN }}
           allowUpdates: true
-
-      - name: Upload APK to Release
-        uses: softprops/action-gh-release@v1
-        with:
           files: src/dist/Echoes_extracted/**/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
