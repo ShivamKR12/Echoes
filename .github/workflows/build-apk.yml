@@ -156,4 +156,4 @@ jobs:
           body: "Download the latest APK of Echoes"
           token: ${{ secrets.PAT_TOKEN }}
           allowUpdates: true
-          files: src/dist/Echoes_extracted/**/*.apk
+          artifacts: src/dist/Echoes_extracted/**/*.apk
