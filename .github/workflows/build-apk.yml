@@ -90,7 +90,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           cd src
-          keytool -genkeypair -alias Echoes-key -keyalg RSA -keysize 2048 -validity 10000 -keystore Echoes.keystore -storepass echoeskeystorepassword -keypass echoeskeypassword -dname "CN=Your Name, OU=YourUnit, O=YourOrg, L=YourCity, ST=YourState, C=YourCountry"
+          keytool -genkeypair -alias Echoes-key -keyalg RSA -keysize 2048 -validity 10000 -keystore Echoes.keystore -storepass Echoes123 -keypass Echoes123 -dname "CN=Your Name, OU=YourUnit, O=YourOrg, L=YourCity, ST=YourState, C=YourCountry"
         shell: pwsh
 
       # 10) Download BundleTool
@@ -106,7 +106,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           cd src
-          java -jar ..\bundletool.jar build-apks --bundle dist\Echoes-1.0.0_android.aab --output dist\Echoes.apks --ks Echoes.keystore --ks-pass pass:echoeskeystorepassword --ks-key-alias Echoes-key --key-pass pass:echoeskeypassword --mode universal --verbose
+          java -jar ..\bundletool.jar build-apks --bundle dist\Echoes-1.0.0_android.aab --output dist\Echoes.apks --ks Echoes.keystore --ks-pass pass:Echoes123 --ks-key-alias Echoes-key --key-pass pass:Echoes123 --mode universal --verbose
         shell: pwsh
 
       # 12) Extract APK
