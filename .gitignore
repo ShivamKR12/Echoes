@@ -15,4 +15,4 @@ src/dist/
 # Python cache
 src/game/__pycache__/
 
-src\wheels\wheelpatcher.py
+src\game\map.py

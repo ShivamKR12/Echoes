@@ -105,10 +105,6 @@ if __name__ == '__main__':
     print("color:", a.color)
     print("Shader active:", a.shader)
     print("shader:", shader)
-    if a.shader.input:
-        print("Entity shader inputs:", a.shader.input)
-    if a.shader.inputs:
-        print("Entity shader inputs:", a.shader.inputs)
 
     from ursina.lights import DirectionalLight
     sun = DirectionalLight(shadow_map_resolution=(1024, 1024))
