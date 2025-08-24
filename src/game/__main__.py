@@ -8,7 +8,6 @@ from ursina.prefabs.health_bar import HealthBar
 from ursina.prefabs.slider import Slider
 from ursina.sequence import Sequence
 from ursina.ursinamath import lerp
-import math
 import random
 
 app = Ursina()

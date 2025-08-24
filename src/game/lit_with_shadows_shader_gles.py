@@ -1,8 +1,18 @@
+# Do not remove these lines
+from setup_ursina_android import setup_ursina_android
+setup_ursina_android()
+
 import sys
-from ursina import Shader, Vec2, color, Entity, Ursina, Sky, EditorCamera, Vec3, held_keys, time
+from ursina import *
+
+from panda3d.core import loadPrcFileData
+loadPrcFileData("", "notify-level-glgsg debug")
+loadPrcFileData("", "notify-level-shader debug")
+loadPrcFileData("", "notify-level-texture debug")
 
 # Only define the shader on Android or Linux
 if sys.platform in ('android', 'linux'):
+    print("Defining lit_with_shadows_shader_gles for platform:", sys.platform)
 
     lit_with_shadows_shader_gles = Shader(
         language=Shader.GLSL,
@@ -78,14 +88,27 @@ if sys.platform in ('android', 'linux'):
 if __name__ == '__main__':
     app = Ursina()
 
+    print("Current platform:", sys.platform)
+
     if sys.platform in ('android', 'linux'):
+        print("Using lit_with_shadows_shader_gles")
         shader = lit_with_shadows_shader_gles
     else:
         shader = None  # fallback
 
     a = Entity(model='cube', shader=shader, y=1, color=color.light_gray)
-    Entity(model='sphere', texture='shore', y=2, x=1, shader=shader)
-    Entity(model='plane', scale=16, texture='grass', shader=shader)
+    Entity(model='sphere', texture='../ursina_assets/shore', y=2, x=1, shader=shader)
+    Entity(model='plane', scale=16, texture='../ursina_assets/grass', shader=shader)
+
+    print("Shader Inputs:")
+    print("texture:", a.texture)
+    print("color:", a.color)
+    print("Shader active:", a.shader)
+    print("shader:", shader)
+    if a.shader.input:
+        print("Entity shader inputs:", a.shader.input)
+    if a.shader.inputs:
+        print("Entity shader inputs:", a.shader.inputs)
 
     from ursina.lights import DirectionalLight
     sun = DirectionalLight(shadow_map_resolution=(1024, 1024))
@@ -95,8 +118,7 @@ if __name__ == '__main__':
     EditorCamera()
 
     def update():
-        a.x += (held_keys['d'] - held_keys['a']) * time.dt * 5
-        a.y += (held_keys['e'] - held_keys['q']) * time.dt * 5
-        a.z += (held_keys['w'] - held_keys['s']) * time.dt * 5
+        if mouse.left and mouse.hovered_entity and isinstance(mouse.hovered_entity, Button):
+            return
 
     app.run()

@@ -11,6 +11,8 @@ on:
     paths-ignore:
       - 'README.md'
       - '.github/workflows/**'
+      - 'src/game/lit_with_shadows_shader_gles.py'
+      - 'src/setup_shader.py'
   workflow_dispatch: 
 
 jobs:
@@ -38,8 +40,8 @@ jobs:
         run: |
           # Use PowerShell on Windows runners
           if ($env:GITHUB_EVENT_NAME -eq "schedule") {
-            # list commits on origin/main in the last 24 hours
-            $changes = git log origin/main --since="24 hours ago" --oneline
+            # list commits on origin/master in the last 24 hours
+            $changes = git log origin/master --since="24 hours ago" --oneline
           } else {
             # push triggers => build
             $changes = "force_build"
