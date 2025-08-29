@@ -5,9 +5,8 @@ setup_ursina_android()
 from ursina import *
 from ursina.prefabs.draggable import Draggable
 from ursina.prefabs.health_bar import HealthBar
-from ursina.prefabs.slider import Slider
 from ursina.sequence import Sequence
-from ursina.ursinamath import lerp
+from ursina.ursinamath import lerp, distance
 import random
 
 app = Ursina()
@@ -77,6 +76,7 @@ class VirtualJoystick(Entity):
         )
         self.knob.always_on_top   = True
         self.knob.start_position  = Vec2(0, 0)
+        self.knob.lock = Vec3(0, 0, 1)
 
         # 6) Current input value (Vec2)
         self.value = Vec2(0, 0)
@@ -116,14 +116,13 @@ class VirtualJoystick(Entity):
 
         # While dragging, clamp knob to circle and compute value
         if self.knob.dragging:
-            offset = Vec2(self.knob.position.x, self.knob.position.y)
+            offset = Vec2(self.knob.x, self.knob.y)
             if offset.length() > self.radius:
                 offset = offset.normalized() * self.radius
-            self.knob.position = offset
+            self.knob.position = Vec3(offset.x, offset.y, 0)  # ensure z=0
             self.value = offset / self.radius
         else:
-            # Reset knob when released
-            self.knob.position = self.knob.start_position
+            self.knob.position = Vec3(0, 0, 0)
             self.value = Vec2(0, 0)
 
 class VirtualButton(Button):
@@ -257,7 +256,7 @@ class FirstPersonController(Entity, HealthMixin):
 
         HealthMixin.__init__(self, health=100)
 
-        # 2) Movement parameters
+        # Movement parameters
         self.speed            = 5
         self.height           = 2
         self.camera_pivot     = Entity(parent=self, y=self.height, name='camera_pivot')
@@ -265,20 +264,23 @@ class FirstPersonController(Entity, HealthMixin):
         camera.position      = (0, 0, 0)
         camera.rotation      = (0, 0, 0)
         camera.fov           = 90
+
+        # Control settings
         self.use_touch       = True
         mouse.locked         = False
         mouse.visible        = True
         self.mouse_sensitivity = Vec2(40, 40)
 
-        # 3) Jump & gravity
+        # Jump & gravity
         self.gravity          = 1
         self.grounded         = False
         self.jump_height      = 2
         self.jump_up_duration = .5
         self.fall_after       = .35
         self.air_time         = 0
+        self.max_step_height  = 0.5
 
-        # 4) Collision setup
+        # Collision setup
         self.traverse_target = scene
         self.ignore_list     = [self]
         self.gun             = None
@@ -299,6 +301,14 @@ class FirstPersonController(Entity, HealthMixin):
         # Create dynamic crosshair, passing self as the player reference
         self.crosshair = DynamicCrosshair(player=self)
 
+        self.damage_overlay = Entity(
+            parent=camera.ui,
+            model='quad',
+            color=color.rgba(255, 0, 0, 0),  # fully transparent initially
+            scale=(2, 2),
+            z=-1
+)
+
         # Apply any overrides passed in
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -315,21 +325,32 @@ class FirstPersonController(Entity, HealthMixin):
                 self.y = ray.world_point.y
 
     def update(self) -> None:
-        # 1) Look via right joystick
-        if self.use_touch:
-            rot = joystick_look.value
-            yaw_gain   = 100
-            pitch_gain = 100
-            self.rotation_y += rot.x * time.dt * yaw_gain
-            self.camera_pivot.rotation_x = clamp(
-                self.camera_pivot.rotation_x - rot.y * time.dt * pitch_gain,
-                -90,
-                90
-            )
+        # Look via right joystick
+        # if self.use_touch:
+        #     rot = joystick_look.value
+        #     yaw_gain   = 100
+        #     pitch_gain = 100
+        #     self.rotation_y += rot.x * time.dt * yaw_gain
+        #     self.camera_pivot.rotation_x = clamp(
+        #         self.camera_pivot.rotation_x - rot.y * time.dt * pitch_gain,
+        #         -90,
+        #         90
+        #     )
+        # else:
+        #     # Mouse look (only when locked)
+        #     if mouse.locked:
+        #         self.rotation_y += mouse.velocity[0] * self.mouse_sensitivity[1]
+        #         self.camera_pivot.rotation_x -= mouse.velocity[1] * self.mouse_sensitivity[0]
+        #         self.camera_pivot.rotation_x = clamp(self.camera_pivot.rotation_x, -90, 90)
 
-        # 2) Move via left joystick
-        move      = joystick_move.value
-        direction = Vec3(self.forward * move.y + self.right * move.x).normalized()
+        # Move via left joystick
+        if self.use_touch:
+            move_x = joystick_move.value.x
+            move_y = joystick_move.value.y
+        else:
+            move_x = held_keys['d'] - held_keys['a']
+            move_y = held_keys['w'] - held_keys['s']
+        direction = Vec3(self.forward * move_y + self.right * move_x).normalized()
         self.velocity = direction * self.speed  # Store velocity vector
 
         if direction:
@@ -348,10 +369,15 @@ class FirstPersonController(Entity, HealthMixin):
                 ignore=self.ignore_list,
                 distance=.5
             )
+
+            if feet.hit and not head.hit:
+                step_height = min(self.max_step_height, feet.world_point.y - self.y)
+                self.y += step_height
+
             if not (feet.hit or head.hit):
                 self.position += direction * self.speed * time.dt
 
-        # 3) Gravity & landing
+        # Gravity & landing
         if self.gravity:
             down_ray = raycast(
                 self.world_position + (0, self.height, 0),
@@ -373,7 +399,6 @@ class FirstPersonController(Entity, HealthMixin):
                 self.air_time += time.dt * .25 * self.gravity
         
         # displacement = self.velocity.length()  # speed player is trying to move
-
         # if self.grounded and displacement > 0.01:  # only bob if actually moved
         #     # Increment timer based on speed
         #     self.headbob_timer += time.dt * self.headbob_frequency * (displacement / self.speed)
@@ -386,8 +411,7 @@ class FirstPersonController(Entity, HealthMixin):
         # else:
         #     # Smoothly return camera to original position
         #     camera.position = lerp(camera.position, self.camera_original_pos, time.dt * 8)
-        
-        self._prev_position = self.position
+        # self._prev_position = self.position
 
         # Apply recoil recovery
         if self.recoil_pitch != 0 or self.recoil_yaw != 0:
@@ -402,25 +426,51 @@ class FirstPersonController(Entity, HealthMixin):
         # Smoothly adjust crosshair spread based on recoil
         self.crosshair.shoot_offset = self.recoil_pitch * 0.05
 
+        if self.damage_overlay.color.a > 0:
+            new_alpha = max(0, self.damage_overlay.color.a - time.dt)
+            self.damage_overlay.color = color.rgba(255, 0, 0, new_alpha)
+
     def input(self, key: str) -> None:
         # Toggle touch controls
         if key == 't':
             self.use_touch  = not self.use_touch
-            mouse.locked    = not self.use_touch
+            
+            if self.use_touch:
+                # Touch mode
+                mouse.locked  = False
+                mouse.visible = True
+            else:
+                # Keyboard/mouse mode
+                mouse.locked  = True
+                mouse.visible = False
+
+            # Show/hide touch controls
+            if joystick_move:
+                joystick_move.enabled = self.use_touch
+                joystick_move.visible = self.use_touch
+            if joystick_look:
+                joystick_look.enabled = self.use_touch
+                joystick_look.visible = self.use_touch
+            if button_jump:
+                button_jump.enabled = self.use_touch
+                button_jump.visible = self.use_touch
+            if button_shoot:
+                button_shoot.enabled = self.use_touch
+                button_shoot.visible = self.use_touch
 
         # Jump
         if key in ('space', 'gamepad a'):
             self.jump()
 
         # Shoot (if gun equipped and not clicking UI)
-        if key == 'left mouse down' and self.gun \
-           and mouse.hovered_entity not in (
-               joystick_move.knob,
-               joystick_look.knob,
-               button_jump,
-               button_shoot,
-               mouse.hovered_entity
-           ):
+        if key == 'left mouse down' and self.gun and not self.use_touch:
+        #    and mouse.hovered_entity not in (
+        #        joystick_move.knob,
+        #        joystick_look.knob,
+        #        button_jump,
+        #        button_shoot,
+        #        mouse.hovered_entity
+        #    ):
             self.shoot()
 
         if key == 'gamepad x':
@@ -495,12 +545,16 @@ class FirstPersonController(Entity, HealthMixin):
         if hasattr(self, 'health_bar'):
             self.health_bar.value = self.health
 
+        # Flash the red overlay
+        self.damage_overlay.color = color.rgba(255, 0, 0, 0.3)
+
     def die(self):
         print("Player died!")
         self.health_bar.value = 0
         global player_alive
         player_alive = False
         destroy(self)  # Remove player entity
+        Text("Game Over", origin=(0,0), scale=3, color=color.red, parent=camera.ui)
         invoke(game_over, delay=1)  # Delay to allow last frame effects (e.g. sounds)
 
 class DummyTarget(Entity, HealthMixin):
@@ -532,6 +586,9 @@ class DummyTarget(Entity, HealthMixin):
         # self.health_bar.z = -0.01  # prevent z-fighting
         self.health_bar.billboard=True
 
+        self.original_color = self.color
+        self.flash_intensity = 0  # 0 means normal, 1 means fully red
+
     def take_damage(self, amount):
         if not self.enabled:             # ignore damage if already “dead”
             return
@@ -544,6 +601,20 @@ class DummyTarget(Entity, HealthMixin):
             # health_bar node no longer valid—ignore
             print(f"Health bar error: {e}")
             pass
+
+        # Flash effect
+        self.flash_intensity = 1  # trigger full flash
+
+    def update(self):
+        if self.flash_intensity > 0:
+            # Gradually reduce flash intensity
+            self.flash_intensity = max(0, self.flash_intensity - time.dt * 2)  # fade speed
+            # Blend between red and original color
+            self.color = color.rgb32(
+                lerp(255, self.original_color[0]*255, 1 - self.flash_intensity),
+                lerp(0,   self.original_color[1]*255, 1 - self.flash_intensity),
+                lerp(0,   self.original_color[2]*255, 1 - self.flash_intensity)
+            )
     
     def die(self):
         print(f'{self} died.')
@@ -675,7 +746,7 @@ class AIBot(DummyTarget):
                 return Vec3(x, y, z)
         print("Failed to find valid ground. Returning origin.")
         print(f"Last attempted position: ({x}, 20, {z})")
-        return Vec3(0, 1, 0)
+        return Vec3(0, 2, 0)
     
     def shoot(self):
         if not self.alive or not player or not self.enabled or time.time() < self._next_fire_time:
@@ -770,17 +841,24 @@ class AIBot(DummyTarget):
         # destroy this instance
         destroy(self)
         # spawn a brand-new bot after 3 seconds at the same spawn_point
-        invoke(lambda: AIBot(
-            patrol_area=self.patrol_area,
-            chase_range=self.chase_range,
-            speed=self.speed,
-            position=self.spawn_point
-        ), delay=3)
+        # invoke(lambda: AIBot(
+        #     patrol_area=self.patrol_area,
+        #     chase_range=self.chase_range,
+        #     speed=self.speed,
+        #     position=self.spawn_point
+        # ), delay=3)
+        if game_started and player_alive and len(ai_bots) == 0:
+            Text("You Win!", origin=(0,0), scale=3, color=color.green, parent=camera.ui)
+            quit_to_main_menu()
 
 def show_main_menu():
     global main_menu, menu_background
 
     print("Showing main menu...")
+
+    # Make mouse cursor visible
+    mouse.visible = True
+    mouse.locked = False
 
     for s in list(Sky.instances):
         destroy(s)
@@ -930,20 +1008,6 @@ def resume_game():
         player.health_bar.enabled = True
     if player and hasattr(player, 'crosshair') and player.crosshair:
         player.crosshair.enabled = True
-    
-    # Re-enable virtual joysticks, buttons, health bar and crosshair when resuming
-    if joystick_move:
-        joystick_move.enabled = True
-    if joystick_look:
-        joystick_look.enabled = True
-    if button_jump:
-        button_jump.enabled = True
-    if button_shoot:
-        button_shoot.enabled = True
-    if player and hasattr(player, 'health_bar') and player.health_bar:
-        player.health_bar.enabled = True
-    if player and hasattr(player, 'crosshair') and player.crosshair:
-        player.crosshair.enabled = True
 
 def quit_to_main_menu():
 
@@ -1066,7 +1130,7 @@ def quit_to_main_menu():
     invoke(cleanup, delay=0)
 
 def game_over():
-    global pause_button
+    global pause_button, player
 
     print("Game Over - Returning to Main Menu")
 
@@ -1147,15 +1211,25 @@ def setup_game():
 
     pause_button = Button(name="pause_button", texture='cog', scale=(.08, .08), position=(-0.85, 0.45), origin=(-0.5, 0.5), parent=camera.ui, color=color.gray, on_click=pause_game)
 
+    # Player and gun setup
+    player = FirstPersonController(y=2, origin_y=-.5)
+    
     # Touch controls
+    joystick_move.visible = player.use_touch
+    joystick_look.visible = player.use_touch
+    button_jump.visible   = player.use_touch
+    button_shoot.visible  = player.use_touch
     joystick_move.enabled = True
     joystick_look.enabled = True
-    button_jump.enabled = True
-    button_shoot.enabled = True
+    button_jump.enabled   = True
+    button_shoot.enabled  = True
+
     pause_button.enabled = True
 
     # Add environment
-    ground = Entity(name="ground", model='cube', scale=(30, 1, 30), color=color.rgb(237/255, 201/255, 175/255), texture='white_cube', texture_scale=(30, 30), collider='box')
+    ground = Entity(name="ground", model='cube', scale=(30, 1, 30), color=color.rgb(0.9294117647058824, 0.7882352941176471, 0.6862745098039216), texture='white_cube', texture_scale=(30, 30), collider='box')
+    stepup1 = Entity(name="stepup1", model='cube', scale=(1, 1, 1), position=(1, 1, 0), color=color.gray, collider='box')
+    stepup2 = Entity(name="stepup2", model='cube', scale=(1, 1, 1), position=(2, 2, 0), color=color.gray, collider='box')
 
     house1 = Entity(name="house1", model='assets/building_01.gltf', position=(-4, 0.5, -4), rotation=(0, 0, 0), scale=(1, 1, 1), collider='box')
     house2 = Entity(name="house2", model='assets/building_01.gltf', position=( 4, 0.5, -4), rotation=(0, 0, 0), scale=(1, 1, 1), collider='box')
@@ -1202,8 +1276,6 @@ def setup_game():
     east_fw2 = Entity(name="east_fw2", model='assets/wall_01.gltf', position=(11, 0.5,  0), rotation=(0, 90, 0), scale=1, collider='box')  # middle pushed right
     east_fw3 = Entity(name="east_fw3", model='assets/wall_01.gltf', position=(10, 0.5,  6), rotation=(0, 90, 0), scale=1, collider='box')
 
-    # Player and gun setup
-    player = FirstPersonController(y=2, origin_y=-.5)
     player.health_bar = HealthBar(
         name="health_bar", 
         max_value=100, 
@@ -1238,19 +1310,19 @@ def setup_game():
     # ──────────────── AI Bots ────────────────
 
     # Top left corner (free of houses/walls)
-    AIBot(position=(-10, 1, 10), patrol_area=(4, 4), chase_range=12, speed=1)
+    AIBot(position=(-10, 2, 10), patrol_area=(4, 4), chase_range=12, speed=1)
 
     # Bottom right corner
-    AIBot(position=(10, 1, -10), patrol_area=(4, 4), chase_range=8, speed=1)
+    AIBot(position=(10, 2, -10), patrol_area=(4, 4), chase_range=8, speed=1)
 
     # Middle-left flank area
-    AIBot(position=(-10, 1, 0), patrol_area=(3, 5), chase_range=0, speed=1)
+    AIBot(position=(-10, 2, 0), patrol_area=(3, 5), chase_range=0, speed=1)
 
     # Middle-right flank area
-    AIBot(position=(10, 1, 0), patrol_area=(3, 5), chase_range=4, speed=1)
+    AIBot(position=(10, 2, 0), patrol_area=(3, 5), chase_range=4, speed=1)
 
     # Bottom-center between houses and wall
-    AIBot(position=(0, 1, -12), patrol_area=(5, 3), chase_range=5, speed=1)
+    AIBot(position=(0, 2, -12), patrol_area=(5, 3), chase_range=5, speed=1)
 
     # Bind buttons
     button_jump.on_click = player.jump
