@@ -288,10 +288,10 @@ class FirstPersonController(Entity, HealthMixin):
         self._next_fire_time = 0
 
         # # Head bob settings
-        # self.headbob_amplitude = 0.05   # How much the camera moves up/down
-        # self.headbob_frequency = 2.0    # How fast the bob cycles
-        # self.headbob_timer = 0.0        # Internal timer for sine wave
-        # self.camera_original_pos = camera.position
+        self.headbob_amplitude = 0.05   # How much the camera moves up/down
+        self.headbob_frequency = 2.0    # How fast the bob cycles
+        self.headbob_timer = 0.0        # Internal timer for sine wave
+        self.camera_original_pos = camera.position
 
         self.recoil_pitch = 0.0          # Current vertical recoil offset
         self.recoil_yaw = 0.0            # Optional horizontal sway
@@ -326,22 +326,22 @@ class FirstPersonController(Entity, HealthMixin):
 
     def update(self) -> None:
         # Look via right joystick
-        # if self.use_touch:
-        #     rot = joystick_look.value
-        #     yaw_gain   = 100
-        #     pitch_gain = 100
-        #     self.rotation_y += rot.x * time.dt * yaw_gain
-        #     self.camera_pivot.rotation_x = clamp(
-        #         self.camera_pivot.rotation_x - rot.y * time.dt * pitch_gain,
-        #         -90,
-        #         90
-        #     )
-        # else:
-        #     # Mouse look (only when locked)
-        #     if mouse.locked:
-        #         self.rotation_y += mouse.velocity[0] * self.mouse_sensitivity[1]
-        #         self.camera_pivot.rotation_x -= mouse.velocity[1] * self.mouse_sensitivity[0]
-        #         self.camera_pivot.rotation_x = clamp(self.camera_pivot.rotation_x, -90, 90)
+        if self.use_touch:
+            rot = joystick_look.value
+            yaw_gain   = 100
+            pitch_gain = 100
+            self.rotation_y += rot.x * time.dt * yaw_gain
+            self.camera_pivot.rotation_x = clamp(
+                self.camera_pivot.rotation_x - rot.y * time.dt * pitch_gain,
+                -90,
+                90
+            )
+        else:
+            # Mouse look (only when locked)
+            if mouse.locked:
+                self.rotation_y += mouse.velocity[0] * self.mouse_sensitivity[1]
+                self.camera_pivot.rotation_x -= mouse.velocity[1] * self.mouse_sensitivity[0]
+                self.camera_pivot.rotation_x = clamp(self.camera_pivot.rotation_x, -90, 90)
 
         # Move via left joystick
         if self.use_touch:
@@ -398,20 +398,21 @@ class FirstPersonController(Entity, HealthMixin):
                 ) * time.dt * 100
                 self.air_time += time.dt * .25 * self.gravity
         
-        # displacement = self.velocity.length()  # speed player is trying to move
-        # if self.grounded and displacement > 0.01:  # only bob if actually moved
-        #     # Increment timer based on speed
-        #     self.headbob_timer += time.dt * self.headbob_frequency * (displacement / self.speed)
-        #     # Sine wave for vertical bob
-        #     bob_offset = math.sin(self.headbob_timer * math.pi * 2) * self.headbob_amplitude
-        #     # horizontal sway for a more natural effect
-        #     sway_offset = math.sin(self.headbob_timer * math.pi * 4) * (self.headbob_amplitude / 2)
-        #     # Apply to camera
-        #     camera.position = self.camera_original_pos + Vec3(sway_offset, bob_offset, 0)
-        # else:
-        #     # Smoothly return camera to original position
-        #     camera.position = lerp(camera.position, self.camera_original_pos, time.dt * 8)
-        # self._prev_position = self.position
+        displacement = self.velocity.length()  # speed player is trying to move
+
+        if self.grounded and displacement > 0.01:  # only bob if actually moved
+            # Increment timer based on speed
+            self.headbob_timer += time.dt * self.headbob_frequency * (displacement / self.speed)
+            # Sine wave for vertical bob
+            bob_offset = math.sin(self.headbob_timer * math.pi * 2) * self.headbob_amplitude
+            # horizontal sway for a more natural effect
+            sway_offset = math.sin(self.headbob_timer * math.pi * 4) * (self.headbob_amplitude / 2)
+            # Apply to camera
+            camera.position = self.camera_original_pos + Vec3(sway_offset, bob_offset, 0)
+        else:
+            # Smoothly return camera to original position
+            camera.position = lerp(camera.position, self.camera_original_pos, time.dt * 8)
+        self._prev_position = self.position
 
         # Apply recoil recovery
         if self.recoil_pitch != 0 or self.recoil_yaw != 0:
@@ -419,9 +420,9 @@ class FirstPersonController(Entity, HealthMixin):
             self.recoil_pitch = lerp(self.recoil_pitch, 0, time.dt * self.recoil_recover_speed)
             self.recoil_yaw   = lerp(self.recoil_yaw, 0, time.dt * self.recoil_recover_speed)
 
-            # # Apply recoil offsets to camera pivot
-            # self.camera_pivot.rotation_x -= self.recoil_pitch
-            # self.rotation_y       += self.recoil_yaw
+            # Apply recoil offsets to camera pivot
+            self.camera_pivot.rotation_x -= self.recoil_pitch
+            self.rotation_y       += self.recoil_yaw
         
         # Smoothly adjust crosshair spread based on recoil
         self.crosshair.shoot_offset = self.recoil_pitch * 0.05
