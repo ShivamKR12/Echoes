@@ -240,3 +240,13 @@ Special thanks to the Ursina and Panda3D communities for their support and inspi
 ---
 
 Thank you for checking out Echoes and exploring Ursina on Android!
+
+## Screenshots
+
+Here are some screenshots showcasing what the game has to offer:
+
+![Screenshot 1](screenshots/IMG-20250906-WA0002.jpg)
+![Screenshot 2](screenshots/IMG-20250906-WA0003.jpg)
+![Screenshot 3](screenshots/IMG-20250906-WA0004.jpg)
+![Screenshot 4](screenshots/IMG-20250906-WA0005.jpg)
+![Screenshot 5](screenshots/IMG-20250906-WA0006.jpg)
