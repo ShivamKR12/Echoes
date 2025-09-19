@@ -69,6 +69,68 @@ Create a `setup.py` file using the provided template. Update the following field
 
 **Important:** Do not remove the `ursina_assets` folder or its entry in `include_patterns`.
 
+#### Understanding Android Build Configuration
+
+- **Application ID:** This is a unique identifier for your app on the Google Play Store. It should be based on your domain name in reverse (e.g., `com.yourcompany.yourapp`). **Caution:** Once your app is uploaded to the Play Store, you cannot change the application ID. Choose it carefully.
+
+- **Android Version Code:** This is an integer that starts at 1 and must be incremented for each new version uploaded to the Play Store. It is used internally by the Play Store for version management, separate from the user-visible version string.
+
+- **Renderer Options:** The setup uses `pandagles2` as the primary renderer (with shaders) and `pandagles` as a fallback (fixed-function pipeline). These are required for Android as the regular `pandagl` renderer is not available. Use `pandagles2` if your game uses shaders; otherwise, use `pandagles`.
+
+For more advanced build options, refer to the [Panda3D Build Options Documentation](https://www.panda3d.org/manual/android/building_for_android.php#list-of-build-options).
+
+#### Alternative Signing Method for Play Store
+
+Instead of signing during bundletool conversion, you can sign the .aab bundle directly for Play Store upload. Generate a certificate using OpenSSL:
+
+```bash
+openssl genpkey -algorithm RSA -aes256 -out private.pem
+openssl req -new -x509 -sha256 -days 365 -key private.pem > cert.pem
+```
+
+Never share the private key! Then, modify setup.py to include signing:
+
+```python
+'bdist_apps': {
+    'signing_certificate': 'cert.pem',
+    'signing_private_key': 'private.pem',
+},
+```
+
+Alternatively, use keytool to generate a keystore and sign manually with jarsigner.
+
+**Disclaimer:** Choose between signing during build (as above) or during bundletool conversion (in step 5). For Play Store uploads, signing the .aab is recommended.
+
+#### Updating Android Version Code for Play Store Releases
+
+For each new version uploaded to the Play Store, increment the `android_version_code` in setup.py by 1. This is required for the Play Store to accept the update.
+
+#### Additional Build Options
+
+Note that the `android_abis` option (e.g., `'android_abis': ['arm64-v8a']`) can be used in `setup.py` to specify which Android CPU architectures to build for. This option is not listed in the official build options but is supported.
+
+#### BundleTool Build Command Options
+
+When using the `bundletool build-apks` command, you can specify various flags to customize the build:
+
+| Flag               | Description                                                                                                         |
+|--------------------|---------------------------------------------------------------------------------------------------------------------|
+| --bundle=path      | (Required) Path to the app bundle (.aab) you built.                                                                 |
+| --output=path      | (Required) Name of the output .apks file containing all APK artifacts.                                               |
+| --overwrite        | Overwrites existing output file if it exists.                                                                        |
+| --aapt2=path       | Specifies a custom path to AAPT2. By default, bundletool includes its own version.                                   |
+| --ks=path          | (Optional) Path to the keystore used to sign the APKs. If omitted, bundletool signs with a debug key.                |
+| --ks-pass=pass:password or --ks-pass=file:/path/to/file | Specifies the keystore password, either inline or from a file.                                      |
+| --ks-key-alias=alias | Alias of the signing key to use.                                                                                   |
+| --key-pass=pass:password or --key-pass=file:/path/to/file | Password for the signing key. Can be omitted if same as keystore password.                          |
+| --connected-device | Builds APKs targeting the configuration of a connected device.                                                       |
+| --device-id=serial-number | Specifies the serial ID of the device to target if multiple devices are connected.                              |
+| --device-spec=spec_json | Path to a JSON file specifying the device configuration to target.                                                |
+| --mode=universal   | Builds a single universal APK compatible with all device configurations. Larger but easier for testing.              |
+| --local-testing    | Enables local testing mode for quick iterative testing without uploading to Play Store.                              |
+
+Use these flags to customize your APK builds when running the `bundletool build-apks` command in step 5.
+
 Place your Ursina game inside the `game` folder. At the top of your main script, add:
 
 ```python
@@ -82,7 +144,8 @@ If your game requires additional Python packages, add them to `requirements.txt`
 
 #### Customizing Your Project
 
-- **Assets:** Place your assets in `game/assets`. Add `'game/assets/**'` to `include_patterns` in `setup.py`.
+- **Assets:** Place your assets in `game/assets`. Add `'game/assets/**'` to `include_patterns` in `setup.py`. **Important:** Ensure all assets are included in `include_patterns`, especially `ursina_assets/**` and `game/assets/**`, as missing assets can cause the app to crash.
+
 - **Asset List:** List your assets in `game/setup_ursina_android.py`:
     ```python
     game_assets = ['your_first_file.png', 'your_second_file.png']
@@ -196,6 +259,23 @@ Install your app:
 adb install "Path/to/your/app.apk"
 ```
 
+For more information on BundleTool, refer to the [BundleTool Documentation](https://developer.android.com/tools/bundletool).
+
+## Troubleshooting
+
+### Common Build Errors
+
+- **Missing .aab file:** Ensure the build command `python setup.py bdist_apps` completes successfully. Check for errors in the console output.
+- **Signing errors:** If signing fails, verify your keystore path, passwords, and alias. Use `keytool -list -v -keystore <keystore-name.keystore>` to check the keystore.
+- **Device connection issues:** Run `adb devices` to confirm your device is connected. Enable USB debugging in developer options.
+- **BundleTool errors:** Ensure Java is installed and BundleTool is the latest version. Use `--verbose` flag for more details.
+
+### Tips
+
+- Always test on a physical device rather than emulator for accurate performance.
+- If the app crashes on launch, check logs with `adb logcat` for Python errors.
+- Ensure all assets are included in `include_patterns` in setup.py, especially `ursina_assets/**` and `game/assets/**`.
+
 ### 6. Debugging and Logs
 
 View your app logs with:
@@ -251,3 +331,4 @@ Here are some screenshots showcasing what the game has to offer:
 ![Screenshot 3](screenshots/IMG-20250906-WA0004.jpg)
 ![Screenshot 4](screenshots/IMG-20250906-WA0005.jpg)
 ![Screenshot 5](screenshots/IMG-20250906-WA0006.jpg)
+![Screenshot 6](screenshots/Screenshot-2025-09-11-122246.png)

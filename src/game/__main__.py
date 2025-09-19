@@ -1530,8 +1530,8 @@ def setup_game():
 
     # Add environment
     ground = Entity(name="ground", model='cube', scale=(30, 1, 30), color=color.rgb(0.9294117647058824, 0.7882352941176471, 0.6862745098039216), texture='white_cube', texture_scale=(30, 30), collider='box')
-    stepup1 = Entity(name="stepup1", model='cube', scale=(1, 1, 1), position=(1, 1, 0), color=color.gray, collider='box')
-    stepup2 = Entity(name="stepup2", model='cube', scale=(1, 1, 1), position=(2, 2, 0), color=color.gray, collider='box')
+    # stepup1 = Entity(name="stepup1", model='cube', scale=(1, 1, 1), position=(1, 1, 0), color=color.gray, collider='box')
+    # stepup2 = Entity(name="stepup2", model='cube', scale=(1, 1, 1), position=(2, 2, 0), color=color.gray, collider='box')
     print("Stepups created")
 
     # ──────────────── Houses (Middle) ────────────────
