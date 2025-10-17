@@ -4,9 +4,9 @@ from ursina.prefabs.first_person_controller import FirstPersonController
 app = Ursina()
 
 player = FirstPersonController()
-player.cursor.visible = True
+# player.cursor.visible = True
 
-crate = Entity(model='cube', color=color.brown, collider='box', scale=(1, 1, 1), position=(3, 0.5, 0))
+crate = Entity(model='assets/Box_01.gltf', collider='box', scale=(1, 1, 1), position=(3, 0.5, 0))
 
 ground = Entity(model='plane', scale=20, texture='white_cube', texture_scale=(20, 20), collider='box')
 
@@ -20,6 +20,9 @@ crate_grounded = False
 
 def update():
     global crate_target_position, crate_fall_speed, crate_grounded
+
+    if held_keys['q']:
+        application.quit()
 
     move_direction = Vec3(0, 0, 0)
     if held_keys['w']:

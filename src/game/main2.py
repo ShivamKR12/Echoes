@@ -5,11 +5,13 @@ from ursina import *
 from ursina.prefabs.health_bar import HealthBar
 from ursina.sequence import Sequence
 from ursina.ursinamath import lerp, distance
+from direct.actor.Actor import Actor
 import random
 import time
 import math
 
 app = Ursina()
+
 window.vsync = False
 
 # Global variables
@@ -37,7 +39,7 @@ joystick_look = None
 button_jump = None
 button_shoot = None
 
-# Preload models (copied exactly to avoid runtime freezes)
+# Preload models
 preload = {}
 preload['bullet'] = load_model('assets/bullet.gltf')
 preload['gunshot'] = Audio('assets/gunshot.wav', loop=False, autoplay=False, volume=0.2)
@@ -79,6 +81,9 @@ preload['east_fw1'] = load_model('assets/wall_01.gltf')
 preload['east_fw2'] = load_model('assets/wall_01.gltf')
 preload['east_fw3'] = load_model('assets/wall_01.gltf')
 
+for key, model in preload.items():
+    assert model is not None, f"Preload failed: {key} could not be loaded"
+
 class Draggable(Button):
     def __init__(self, model='circle', color=color.white, **kwargs):
         print("Draggable __init__ called")
@@ -102,6 +107,9 @@ class Draggable(Button):
 
     def update(self):
         if self.dragging:
+            assert self.parent is not None, "Draggable must have a parent to compute offsets"
+            assert hasattr(mouse, 'x') and hasattr(mouse, 'y'), "Mouse must provide x and y"
+            assert isinstance(self.lock, Vec3), "lock must be a Vec3"
             if not self.lock[0]:
                 self.x = mouse.x - self.parent.x
             if not self.lock[1]:
@@ -159,6 +167,7 @@ class VirtualJoystick(Entity):
 
     def update(self):
         cur_w, _ = window.size
+        assert cur_w > 0, "Window width must be positive"
         ratio = cur_w / (self._init_w or cur_w)
         self._apply_scale(ratio)
 
@@ -186,6 +195,8 @@ class VirtualButton(Button):
         self._base_ui_size = (self.size_px / h) * 2
         self.scale = self._base_ui_size
         print("VirtualButton _calculated : key_name =", self.key_name, "size_px =", self.size_px, "_init_h =", self._init_h, "_base_ui_size =", self._base_ui_size, "scale =", self.scale)
+        assert self.size_px > 0, "Button size must be positive"
+        assert -1 <= self.position[0] <= 1 and -1 <= self.position[1] <= 1, "Button position out of UI bounds"
 
     def update(self):
         cur_w, _ = window.size
@@ -218,7 +229,9 @@ class HealthMixin:
         print("HealthMixin __init__ called with health =", health)
 
     def take_damage(self, amount):
+        assert amount >= 0, f"Damage must be non-negative, got {amount}"
         self.health -= amount
+        assert self.health <= 100, f"Health out of reasonable range: {self.health}"
         print(f"{self} took {amount} damage, health now {self.health}")
         if self.health <= 0:
             print(f"{self} has died.")
@@ -272,6 +285,7 @@ class FSM:
         self.state = None
 
     def change_state(self, new_state):
+        assert new_state is not None, "Cannot change FSM state to None"
         if self.state and hasattr(self.state, 'exit'):
             self.state.exit()
         self.state = new_state
@@ -338,6 +352,10 @@ class FirstPersonController(Entity, HealthMixin, FSM):
             z=-1
         )
 
+        assert self.height > 0, "Player height must be positive"
+        assert isinstance(self.mouse_sensitivity, Vec2), "Mouse sensitivity must be Vec2"
+        assert self.crosshair is not None, "Crosshair must be created"
+
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -373,6 +391,7 @@ class FirstPersonController(Entity, HealthMixin, FSM):
             self._next_fire_time = time.time() + 0.25
             # gunshot.play()
             preload['gunshot'].play()
+            assert preload['bullet'] is not None, "Bullet model missing"
             self.gun.blink(color.gray)
             self.recoil_pitch += self.recoil_amount.x
             self.recoil_yaw += random.uniform(-self.recoil_amount.y, self.recoil_amount.y)
@@ -387,8 +406,10 @@ class FirstPersonController(Entity, HealthMixin, FSM):
                 hit.entity.take_damage(50)
 
     def take_damage(self, amount):
+        assert amount >= 0, "Damage must not be negative"
         super().take_damage(amount)
         if hasattr(self, 'health_bar'):
+            assert 0 <= self.health <= self.health_bar.max_value, "Health out of bounds for health bar"
             self.health_bar.value = self.health
             print(f"Player health updated: {self.health}")
         self.damage_overlay.color = color.rgba(255,0,0,0.3)
@@ -461,6 +482,8 @@ class FirstPersonController(Entity, HealthMixin, FSM):
             if direction:
                 feet = raycast(self.controller.position + Vec3(0, 0.5, 0), direction, traverse_target=self.controller.traverse_target, ignore=self.controller.ignore_list, distance=0.5)
                 head = raycast(self.controller.position + Vec3(0, self.controller.height - 0.1, 0), direction, traverse_target=self.controller.traverse_target, ignore=self.controller.ignore_list, distance=0.5)
+                assert feet is not None, "Feet raycast failed"
+                assert head is not None, "Head raycast failed"
                 if feet.hit and not head.hit:
                     step_height = min(self.controller.max_step_height, feet.world_point.y - self.controller.y)
                     self.controller.y += step_height
@@ -501,10 +524,11 @@ class FirstPersonController(Entity, HealthMixin, FSM):
 
         def enter(self):
             self.controller.grounded = False
+            resolution = max(1, int(1 // max(time.dt, 1e-6)))
             self.seq = self.controller.animate_y(
                 self.controller.y + self.controller.jump_height,
                 self.controller.jump_up_duration,
-                resolution=int(1 // time.dt),
+                resolution=resolution,
                 curve=curve.out_expo
             )
             sequences.append(self.seq)
@@ -559,7 +583,7 @@ class FirstPersonController(Entity, HealthMixin, FSM):
 # DummyTarget unchanged
 class DummyTarget(Entity, HealthMixin):
     def __init__(self, **kwargs):
-        super().__init__(health=100, model='cube', color=color.orange, collider='box', scale=(1,2,1), name='dummy_target', **kwargs)
+        super().__init__(health=100, collider='box', scale=1, name='dummy_target', **kwargs)
         print("DummyTarget __init__ called")
         self.spawn_point = self.position
         self.visible = True
@@ -619,7 +643,11 @@ class AIBot(FSM, DummyTarget):
         self.alive = True
         self.is_chasing = False
         print("AIBot initialized with patrol_area =", patrol_area, "chase_range =", chase_range, "speed =", speed, "fire_interval =", self.fire_interval, "_next_fire_time =", self._next_fire_time, "alive =", self.alive, "is_chasing =", self.is_chasing)
-        self.gun = Entity(parent=self, model='assets/pistol.gltf', color=color.gray.tint(-.2), position=Vec3(.2,.1,.8), rotation=Vec3(0,0,0), scale=0.1, name='ai_gun')
+        self.actor = Actor("assets/newcharac3.glb")
+        self.actor.reparent_to(self)
+        self.actor.setScale(1)
+        self.actor.loop("RifleIdle")
+        self.spawn_point = self.position
         self.target_pos = self.get_valid_ground_position()
         ai_bots.append(self)
         self.change_state(self.PatrolState(self))
@@ -629,13 +657,33 @@ class AIBot(FSM, DummyTarget):
     def update_state(self):
         if not self.enabled:
             return
-        self.update()
-        if self.update_task:
-            self.update_task.finish()
+        # perform one update (state machine)
+        try:
+            self.update()
+        except Exception as e:
+            print(f"AIBot.update_state: caught exception in self.update(): {e}")
+        # Safely stop previous scheduled task without triggering it immediately.
+        if getattr(self, 'update_task', None):
+            try:
+                # pause() should stop the scheduled invocation without executing it now.
+                self.update_task.pause()
+            except Exception:
+                # some invoke objects may not implement pause; ignore errors
+                pass
             if self.update_task in bot_tasks:
                 bot_tasks.remove(self.update_task)
+
+        # schedule the next tick
         self.update_task = invoke(self.update_state, delay=0.1)
         bot_tasks.append(self.update_task)
+
+    def set_animation(self, anim_name, loop=True):
+        current = self.actor.getCurrentAnim()
+        if current != anim_name:
+            if loop:
+                self.actor.loop(anim_name)
+            else:
+                self.actor.play(anim_name)
 
     def get_valid_ground_position(self, max_attempts=8, initial=False):
         """
@@ -730,7 +778,7 @@ class AIBot(FSM, DummyTarget):
             return False
 
         # Raycast LOS
-        ignore_list = [self] + [b for b in ai_bots if b is not self]
+        ignore_list = [self, self.bullet] + [b for b in ai_bots if b is not self]
         hit = raycast(
             origin=eye_pos,
             direction=dir_to_player,
@@ -802,7 +850,16 @@ class AIBot(FSM, DummyTarget):
             down_ray = raycast(self.bot.position + Vec3(0,0.5,0), Vec3(0,-1,0), ignore=[self.bot], traverse_target=scene)
             if down_ray.hit:
                 self.bot.y = down_ray.world_point.y + 1
-            self.bot.look_at(player.position)
+            # Guarded look_at usage:
+            if player and player in scene.entities and getattr(player, 'enabled', True):
+                try:
+                    if move_dir.length() > 0:
+                        look_target = self.bot.position + move_dir
+                        self.bot.look_at(look_target)
+                except Exception as e:
+                    # If look_at fails (entity mid-destroy), ignore for this frame
+                    print(f"AIBot.PatrolState.update: look_at failed: {e}")
+            self.bot.set_animation("RifleWalk")
             self.bot.rotation_x = 0
             self.bot.rotation_z = 0
 
@@ -850,7 +907,14 @@ class AIBot(FSM, DummyTarget):
             down_ray = raycast(self.bot.position + Vec3(0,0.5,0), Vec3(0,-1,0), ignore=[self.bot], traverse_target=scene)
             if down_ray.hit:
                 self.bot.y = down_ray.world_point.y + 1
-            self.bot.look_at(player.position)
+            # Guarded look_at usage:
+            if player and player in scene.entities and getattr(player, 'enabled', True):
+                try:
+                    self.bot.look_at(player.position)
+                except Exception as e:
+                    # If look_at fails (entity mid-destroy), ignore for this frame
+                    print(f"AIBot.PatrolState.update: look_at failed: {e}")
+            self.bot.set_animation("RifleRun")
             self.bot.rotation_x = 0
             self.bot.rotation_z = 0
 
@@ -866,10 +930,18 @@ class AIBot(FSM, DummyTarget):
             if distance(self.bot.position, player.position) > self.bot.chase_range:
                 self.bot.change_state(self.bot.PatrolState(self.bot))
                 return
-            self.bot.look_at(player.position)
+            # Guarded look_at usage:
+            if player and player in scene.entities and getattr(player, 'enabled', True):
+                try:
+                    self.bot.look_at(player.position)
+                except Exception as e:
+                    # If look_at fails (entity mid-destroy), ignore for this frame
+                    print(f"AIBot.PatrolState.update: look_at failed: {e}")
+            self.bot.set_animation("FiringRifle", loop=False)
             self.bot.rotation_x = 0
             self.bot.rotation_z = 0
             self.bot.shoot()
+            invoke(lambda: self.bot.set_animation("RifleIdle"), delay=0.9)
 
     def shoot(self):
         if not self.alive or not player or not self.enabled or time.time() < self._next_fire_time:
@@ -882,13 +954,13 @@ class AIBot(FSM, DummyTarget):
         preload['gunshot'].play()
         dir_to_player = (player.position - self.position).normalized()
         eye_pos = self.position + Vec3(-.1, .5, .3)
-        bullet = Entity(model=preload['bullet'], color=color.gold, scale=0.2, position=eye_pos, collider='box', speed=30, name='ai_bullet')
-        bullet.world_parent = scene
-        bullet.look_at(player.position)
-        def bullet_update(b=bullet):
+        self.bullet = Entity(model=preload['bullet'], scale=0.2, position=eye_pos, collider='box', speed=30, name='ai_bullet')
+        self.bullet.world_parent = scene
+        self.bullet.look_at(player.position)
+        def bullet_update(b=self.bullet):
             if not b or not b.enabled:
                 return
-            if not player or not hasattr(player, 'position') or player in scene.entities and player.enabled == False:
+            if (not player) or (not hasattr(player, 'position')) or (player in scene.entities and not getattr(player, 'enabled', True)):
                 destroy(b)
                 return
             if not self or not hasattr(self, 'position') or not self.enabled:
@@ -911,7 +983,7 @@ class AIBot(FSM, DummyTarget):
             if self and hasattr(self, 'position') and distance(b.position, self.position) > 50:
                 destroy(b)
                 return
-        bullet.update = bullet_update
+        self.bullet.update = bullet_update
         hit = raycast(origin=eye_pos, direction=dir_to_player, distance=50, ignore=[self], traverse_target=scene)
         if hit.hit and hit.entity == player:
             player.take_damage(10)
@@ -921,6 +993,8 @@ class AIBot(FSM, DummyTarget):
         # Mark dead and disable immediately so other logic stops early
         self.alive = False
         self.enabled = False
+
+        self.actor.play("Death")
 
         # Pause scheduled updates BEFORE we destroy node/visuals
         if hasattr(self, 'update_task'):
@@ -935,6 +1009,9 @@ class AIBot(FSM, DummyTarget):
         if hasattr(self, 'update_task') and self.update_task in bot_tasks:
             bot_tasks.remove(self.update_task)
 
+        # if hasattr(self, 'actor'):
+        self.actor.cleanup()
+
         # Now run superclass cleanup, which will destroy visuals and health etc.
         super().die()
 
@@ -947,7 +1024,6 @@ class AIBot(FSM, DummyTarget):
 def show_main_menu():
     global main_menu, menu_background
     print("Showing main menu")
-    application.resume()
     mouse.visible = True
     mouse.locked = False
     lst1 = list(Sky.instances)
@@ -971,7 +1047,6 @@ def show_main_menu():
 def show_pause_menu():
     global pause_menu, resume_button, setting_button, quit_button, joystick_move, joystick_look, button_jump, button_shoot, player
     print("Showing pause menu")
-    application.pause()
     pause_menu = Entity(name="pause_menu", parent=camera.ui)
     Text(name="pause_menu_title", text="Paused", scale=2, x=-0.1, y=0.3, parent=pause_menu)
     resume_button = Button(text='Resume', scale=(.3,.1), y=0.2, parent=pause_menu, on_click=resume_game)
@@ -998,7 +1073,6 @@ def show_pause_menu():
 def start_singleplayer():
     global game_started, menu_background, main_menu, player_alive, joystick_move, joystick_look, button_jump, button_shoot, pause_button, player, settings_menu, speed_slider, jump_slider, sensx_slider, sensy_slider, volume_slider
     print("Starting singleplayer game")
-    application.resume()
     player_alive = True
     for t in bot_tasks:
         print("Finishing bot task:", t)
@@ -1053,7 +1127,6 @@ def pause_game():
 def resume_game():
     global pause_menu, joystick_move, joystick_look, button_jump, button_shoot, player
     destroy(pause_menu)
-    application.resume()
     pause_button.enabled = True
     if joystick_move:
         joystick_move.enabled = True
@@ -1072,7 +1145,6 @@ def resume_game():
 def close_settings():
     global settings_menu, speed_slider, jump_slider, sensx_slider, sensy_slider
     print("Closing settings menu and applying settings")
-    application.pause()
     destroy(settings_menu)
     settings_menu = None
     speed_slider = None
@@ -1085,7 +1157,6 @@ def close_settings():
 def setting_menu():
     global pause_menu, settings_menu, speed_slider, jump_slider, sensx_slider, sensy_slider
     print("Opening settings menu")
-    application.resume()
     if pause_menu:
         pause_menu.enabled = False
     settings_menu = Entity(name="settings_menu", parent=camera.ui)
@@ -1108,7 +1179,6 @@ def quit_to_main_menu():
     def cleanup():
         print("Cleaning up game entities and returning to main menu")
         global player, bot_tasks, ai_bots, sequences, pause_menu, main_menu, menu_background, joystick_move, joystick_look, button_jump, button_shoot, pause_button, settings_menu, speed_slider, jump_slider, sensx_slider, sensy_slider, volume_slider
-        application.pause()
         for seq in list(sequences):
             print("Finishing sequence before quiting to main menu:", seq)
             if isinstance(seq, Sequence):
@@ -1176,14 +1246,12 @@ def quit_to_main_menu():
         sequences.clear()
         bot_tasks.clear()
         ai_bots.clear()
-        application.resume()
         show_main_menu()
     invoke(cleanup, delay=0)
 
 def game_over():
     global pause_button, bot_tasks, ai_bots, sequences, player_alive
     print("Game Over - cleaning up and returning to main menu")
-    application.pause()
     if pause_button and hasattr(pause_button, 'enabled') and pause_button.enabled:
         try:
             pause_button.enabled = False
@@ -1245,13 +1313,11 @@ def game_over():
         # Go back to main menu
         destroy(death_msg)
         show_main_menu()
-    application.resume()
     invoke(cleanup, delay=3)  # wait 3 seconds before cleaning up
 
 def setup_game():
     global player, pause_button, joystick_move, joystick_look, button_jump, button_shoot
     print("Setting up game environment")
-    application.resume()
     joystick_move = VirtualJoystick(name="joystick_move", position=(-.7,-.3))
     joystick_look = VirtualJoystick(name="joystick_look", position=(.3,-.3))
     button_jump = VirtualButton(name="button_jump", key_name='gamepad a', position=(.6,-.1), color=color.lime)
@@ -1301,17 +1367,19 @@ def setup_game():
     gun = Button(name="gun_pickup", parent=scene, model='assets/pistol.gltf', position=(1,1,1), collider='box', scale=0.1, color=color.gray.tint(-.2))
     gun.on_click = lambda: (setattr(gun, 'parent', camera), setattr(gun, 'position', Vec3(0.2,-0.2,2)), setattr(gun, 'rotation', Vec3(0,0,0)), setattr(gun, 'scale', Vec3(0.3,0.3,0.3)), setattr(player, 'gun', gun))
     gun.on_mouse_enter = gun.on_click
-    AIBot(position=(-10,2,10), patrol_area=(4,4), chase_range=20, speed=1)
-    AIBot(position=(10,2,-10), patrol_area=(4,4), chase_range=20, speed=1)
-    AIBot(position=(-10,2,0), patrol_area=(3,5), chase_range=20, speed=1)
-    AIBot(position=(10,2,0), patrol_area=(3,5), chase_range=20, speed=1)
-    AIBot(position=(0,2,-12), patrol_area=(5,3), chase_range=20, speed=1)
+    AIBot(position=(-10,2,10), patrol_area=(4,4), chase_range=2, speed=1)
+    AIBot(position=(10,2,-10), patrol_area=(4,4), chase_range=2, speed=1)
+    AIBot(position=(-10,2,0), patrol_area=(3,5), chase_range=2, speed=1)
+    AIBot(position=(10,2,0), patrol_area=(3,5), chase_range=2, speed=1)
+    AIBot(position=(0,2,-12), patrol_area=(5,3), chase_range=2, speed=1)
     button_jump.on_click = player.jump
     button_shoot.on_click = player.shoot
     # Enable hover activation for virtual buttons
     button_jump.on_mouse_enter = button_jump.on_click
     button_shoot.on_mouse_enter = button_shoot.on_click
     pause_button.on_mouse_enter = pause_button.on_click
+    sun = DirectionalLight(shadows=True, rotation=(45,-45,45))
+    ambient = AmbientLight(color=color.white)
     Sky()
     print("Game environment setup complete")
 

@@ -2,12 +2,8 @@ from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
 from ursina.prefabs.health_bar import HealthBar
 from direct.actor.Actor import Actor
-# import simplepbr
-# import gltf
 
 app = Ursina()
-
-# simplepbr.init()
 
 class HealthMixin:
     def __init__(self, health=100, **kwargs):
@@ -91,6 +87,8 @@ class AIBot(DummyTarget):
         self.actor = Actor('assets/newcharac3.glb')
         self.actor.reparent_to(self)
         self.actor.loop('RifleIdle')
+        print("All Animations :", self.actor.getAnimNames())
+        self.actor.ls()
 
         # self.gun = Entity(
         #     parent=self,

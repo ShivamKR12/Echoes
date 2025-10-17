@@ -1,0 +1,14 @@
+2025-09-19 21:13:03,054 [DEBUG] FPSGame: VirtualJoystick __init__ called
+2025-09-19 21:13:03,054 [DEBUG] FPSGame: VirtualJoystick super().__init__ called
+2025-09-19 21:13:03,054 [DEBUG] FPSGame: VirtualJoystick calculated: _base_ui_diam=0.3257328990228013, _base_ui_radius=0.16286644951140064, radius=0.16286644951140064
+2025-09-19 21:13:03,061 [DEBUG] FPSGame: Draggable __init__ called
+2025-09-19 21:13:03,062 [DEBUG] FPSGame: Draggable super().__init__ called
+2025-09-19 21:13:03,062 [DEBUG] FPSGame: Draggable initialized with lock=Vec3(0, 0, 0), min_x=-inf, max_x=inf, min_y=-inf, max_y=inf, min_z=-inf, max_z=inf
+2025-09-19 21:13:03,062 [DEBUG] FPSGame: VirtualJoystick knob configured: always_on_top=True, lock=Vec3(0, 0, 1), min_x=-0.16286644951140064, max_x=0.16286644951140064, min_y=-0.16286644951140064, max_y=0.16286644951140064, min_z=-inf, max_z=inf
+2025-09-19 21:13:03,062 [DEBUG] FPSGame: VirtualJoystick __init__ called
+2025-09-19 21:13:03,062 [DEBUG] FPSGame: VirtualJoystick super().__init__ called
+2025-09-19 21:13:03,069 [DEBUG] FPSGame: VirtualJoystick calculated: _base_ui_diam=0.3257328990228013, _base_ui_radius=0.16286644951140064, radius=0.16286644951140064
+2025-09-19 21:13:03,070 [DEBUG] FPSGame: Draggable __init__ called
+2025-09-19 21:13:03,075 [DEBUG] FPSGame: Draggable super().__init__ called
+2025-09-19 21:13:03,077 [DEBUG] FPSGame: Draggable initialized with lock=Vec3(0, 0, 0), min_x=-inf, max_x=inf, min_y=-inf, max_y=inf, min_z=-inf, max_z=inf
+2025-09-19 21:13:03,077 [DEBUG] FPSGame: VirtualJoystick knob configured: always_on_top=True, lock=Vec3(0, 0, 1), min_x=-0.16286644951140064, max_x=0.16286644951140064, min_y=-0.16286644951140064, max_y=0.16286644951140064, min_z=-inf, max_z=inf
